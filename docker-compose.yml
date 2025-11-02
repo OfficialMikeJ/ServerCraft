@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: servercraft-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - servercraft-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: servercraft-backend
+    restart: unless-stopped
+    environment:
+      - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
+      - DB_NAME=${DB_NAME:-servercraft}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./backend:/app/backend
+      - server-data:/app/data
+    depends_on:
+      - mongo
+    networks:
+      - servercraft-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: servercraft-frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+      - WDS_SOCKET_PORT=${WDS_SOCKET_PORT:-443}
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    networks:
+      - servercraft-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB Database
+  mongo:
+    image: mongo:6
+    container_name: servercraft-mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=${DB_NAME:-servercraft}
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    networks:
+      - servercraft-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+  server-data:
+    driver: local
+
+networks:
+  servercraft-network:
+    driver: bridge
