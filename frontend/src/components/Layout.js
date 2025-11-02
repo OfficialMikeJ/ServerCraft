@@ -32,7 +32,13 @@ const Layout = ({ children }) => {
       <div className="fixed left-0 top-0 h-full w-64 glass border-r border-slate-700 p-6 flex flex-col" data-testid="sidebar">
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+            <div 
+              className="p-2 rounded-lg"
+              style={{
+                background: theme.gradient,
+                boxShadow: `0 4px 12px ${theme.shadow}`
+              }}
+            >
               <Server className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white">ServerCraft</h1>
