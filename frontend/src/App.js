@@ -60,22 +60,24 @@ function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
-      <div className="App">
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={!token ? <LoginPage /> : <Navigate to="/" />} />
-            <Route path="/" element={token ? <Dashboard /> : <Navigate to="/login" />} />
-            <Route path="/servers" element={token ? <ServersPage /> : <Navigate to="/login" />} />
-            <Route path="/nodes" element={token ? <NodesPage /> : <Navigate to="/login" />} />
-            <Route path="/users" element={token ? <UsersPage /> : <Navigate to="/login" />} />
-            <Route path="/themes-plugins" element={token ? <ThemesPluginsPage /> : <Navigate to="/login" />} />
-            <Route path="/settings" element={token ? <SettingsPage /> : <Navigate to="/login" />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster position="top-right" />
-      </div>
-    </AuthContext.Provider>
+    <ThemeProvider>
+      <AuthContext.Provider value={{ user, token, login, logout }}>
+        <div className="App">
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={!token ? <LoginPage /> : <Navigate to="/" />} />
+              <Route path="/" element={token ? <Dashboard /> : <Navigate to="/login" />} />
+              <Route path="/servers" element={token ? <ServersPage /> : <Navigate to="/login" />} />
+              <Route path="/nodes" element={token ? <NodesPage /> : <Navigate to="/login" />} />
+              <Route path="/users" element={token ? <UsersPage /> : <Navigate to="/login" />} />
+              <Route path="/themes-plugins" element={token ? <ThemesPluginsPage /> : <Navigate to="/login" />} />
+              <Route path="/settings" element={token ? <SettingsPage /> : <Navigate to="/login" />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster position="top-right" />
+        </div>
+      </AuthContext.Provider>
+    </ThemeProvider>
   );
 }
 
