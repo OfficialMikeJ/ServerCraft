@@ -560,6 +560,35 @@ docker-compose logs -f mongo
 docker stats
 ```
 
+### Theme Management
+
+ServerCraft includes 4 professional themes that can be changed by any user:
+
+**Accessing Theme Settings:**
+```
+1. Login to your panel
+2. Navigate to Settings page
+3. Find "Theme Customization" at the top
+4. Choose your preferred theme
+```
+
+**Theme Options:**
+- **Crimson Shadow** - Black & Red (Gaming aesthetic)
+- **Ocean Depths** - Black & Blue (Default, Professional)
+- **Emerald Matrix** - Black & Green (Tech/Matrix style)
+- **Violet Nebula** - Black & Purple (Futuristic)
+
+**Two Ways to Apply:**
+1. **Dropdown Method**: Select from dropdown → Click "Apply Theme"
+2. **Quick Apply**: Click any theme card for instant change
+
+All themes include:
+- Dynamic button colors with shadow effects
+- Themed text and accent colors
+- Border highlighting with theme colors
+- Smooth 0.3s transitions
+- Persistent across sessions (localStorage)
+
 ### Backup & Restore
 
 #### Automated Backup Script
