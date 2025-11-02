@@ -1,70 +1,119 @@
-# Getting Started with Create React App
+# ServerCraft - Game Server Management Panel
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, sleek, and automated game server management panel with full Docker support for managing multiple game servers across different nodes.
 
-## Available Scripts
+## 🚀 Features
 
-In the project directory, you can run:
+### Core Features
+- **Multi-Node Support** - Manage servers across multiple infrastructure nodes
+- **Docker Container Management** - Automated game server deployment using Docker
+- **JWT Authentication** - Secure token-based authentication system
+- **Sub-User Management** - Granular permission system for team access
+- **File Explorer** - Browse and manage server files
+- **Arma 3 Workshop Integration** - Upload .html mod lists and auto-download Steam Workshop mods
+- **Server Selling** - Optional feature to sell servers to friends/community
 
-### `npm start`
+### Supported Games (Initial Release)
+- Arma 3 (Vanilla & Modded)
+- Rust (Vanilla)
+- Arma Reforger
+- DayZ
+- ICARUS
+- Escape from Tarkov SPT
+- Ground Branch
+- Operation Harsh Doorstop
+- Squad
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🛠️ Technology Stack
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**Backend:** FastAPI, MongoDB, Motor, Docker SDK, JWT, BeautifulSoup4  
+**Frontend:** React 19, TailwindCSS, Shadcn/UI, Axios, React Router
 
-### `npm test`
+## 🎯 Quick Start
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Using the Panel
 
-### `npm run build`
+1. **Register**: Create an admin account at `/login`
+2. **Add a Node**: Go to Nodes page and add your first server node
+3. **Create Server**: Navigate to Servers and create a game server
+4. **Manage**: Start/Stop/Restart servers with one click
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Test Credentials
+- Email: `admin@servercraft.com`
+- Password: `Admin123!`
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📋 API Endpoints
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Authentication
+- `POST /api/auth/register` - Register
+- `POST /api/auth/login` - Login
 
-### `npm run eject`
+### Servers
+- `GET /api/servers` - List servers
+- `POST /api/servers` - Create server
+- `POST /api/servers/{id}/start` - Start
+- `POST /api/servers/{id}/stop` - Stop
+- `POST /api/servers/{id}/restart` - Restart
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Nodes
+- `GET /api/nodes` - List nodes
+- `POST /api/nodes` - Create node
+- `PUT /api/nodes/{id}` - Update node
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### File Management
+- `GET /api/servers/{id}/files` - Browse files
+- `POST /api/servers/{id}/files/upload` - Upload file
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 🎨 UI Highlights
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- Modern glassmorphism design
+- Dark theme with cyan/blue gradient accents
+- Real-time status indicators
+- Smooth animations
+- Fully responsive layout
 
-## Learn More
+## 🔒 Security
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- Bcrypt password hashing
+- JWT authentication
+- Role-based permissions
+- CORS configuration
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 📦 Docker Compose Deployment
 
-### Code Splitting
+```yaml
+version: '3.8'
+services:
+  servercraft:
+    image: servercraft-panel:latest
+    ports:
+      - "3000:3000"
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - JWT_SECRET_KEY=your-secret-key
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - mongo
+  mongo:
+    image: mongo:latest
+    volumes:
+      - mongo-data:/data/db
+volumes:
+  mongo-data:
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 📝 Future Enhancements
 
-### Analyzing the Bundle Size
+- Real-time console output
+- Automated backups
+- Email notifications
+- Payment gateway integration
+- More game support
+- Advanced monitoring
+- Server templates
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+---
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+**Note**: This is a full-featured game server management panel. Docker must be available for server deployment features to work.
