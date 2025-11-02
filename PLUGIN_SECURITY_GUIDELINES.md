@@ -3,6 +3,8 @@
 ## Overview
 This document outlines the security restrictions and best practices for developing plugins and themes for ServerCraft. These guidelines ensure the safety and integrity of the game server panel while allowing community extensions.
 
+**Distribution Model:** All plugins and themes are downloaded from the official ServerCraft marketplace website and installed by panel administrators only.
+
 ---
 
 ## ✅ ALLOWED Features
