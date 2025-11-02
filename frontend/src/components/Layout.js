@@ -78,11 +78,22 @@ const Layout = ({ children }) => {
                 key={item.path}
                 data-testid={item.testId}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition ${
-                  isActive
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
-                    : "text-slate-300 hover:bg-slate-700/50"
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition themed-button ${
+                  isActive ? "nav-item-active" : ""
                 }`}
+                style={
+                  isActive
+                    ? {
+                        background: theme.gradient,
+                        border: `2px solid ${theme.borderAccent}`,
+                        boxShadow: `0 4px 12px ${theme.shadow}`,
+                        color: "#ffffff",
+                      }
+                    : {
+                        color: theme.textSecondary,
+                        border: "2px solid transparent",
+                      }
+                }
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.name}</span>
