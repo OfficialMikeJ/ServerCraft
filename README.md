@@ -725,12 +725,62 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### v1.0.0 (Current)
 - ✅ Initial release
 - ✅ 9 game servers supported
-- ✅ JWT authentication
-- ✅ Multi-node support
-- ✅ SSL/Let's Encrypt integration
-- ✅ Dynamic DNS support
-- ✅ 91.7% security test pass rate
-- ✅ Themes & plugins system (in development)
+- ✅ JWT authentication with refresh tokens
+- ✅ Multi-node support with resource tracking
+- ✅ SSL/Let's Encrypt integration (static & dynamic IPs)
+- ✅ Dynamic DNS support (DuckDNS, Cloudflare)
+- ✅ 91.7% security test pass rate (22/24 tests)
+- ✅ **4 Professional Themes** (Crimson, Ocean, Emerald, Violet)
+- ✅ **Theme System** with dropdown selector & instant apply
+- ✅ Dynamic UI styling with shadow effects
+- ✅ Themes & plugins marketplace (in development)
+- ✅ Sub-user management with granular permissions
+- ✅ Arma 3 workshop integration
+- ✅ File explorer for server management
+- ✅ Account lockout & rate limiting
+- ✅ Audit logging for all actions
+
+---
+
+## 🎨 Theme System Details
+
+### Available Themes
+
+**1. Crimson Shadow (Red)**
+- Primary: #dc2626
+- Accent: #f87171
+- Perfect for: Intense gaming atmosphere
+
+**2. Ocean Depths (Blue)** - Default
+- Primary: #0891b2
+- Accent: #22d3ee
+- Perfect for: Professional, sleek look
+
+**3. Emerald Matrix (Green)**
+- Primary: #10b981
+- Accent: #6ee7b7
+- Perfect for: Tech/matrix aesthetic
+
+**4. Violet Nebula (Purple)**
+- Primary: #8b5cf6
+- Accent: #c4b5fd
+- Perfect for: Futuristic, space theme
+
+### Theme Features
+- **Dropdown Selector**: Choose theme from dropdown + click "Apply"
+- **Visual Cards**: Click any theme card for instant apply
+- **Live Preview**: See button & text samples before applying
+- **Persistent**: Saves to localStorage automatically
+- **Dynamic**: All UI elements update instantly (buttons, text, borders, shadows)
+- **Smooth Transitions**: 0.3s animations between themes
+
+### How to Change Theme
+1. Login to ServerCraft
+2. Navigate to **Settings** page
+3. Scroll to **Theme Customization** (top of page)
+4. **Option A**: Use dropdown + "Apply Theme" button
+5. **Option B**: Click any visual theme card for instant apply
+6. Theme applies across entire panel immediately
 
 ---
 
