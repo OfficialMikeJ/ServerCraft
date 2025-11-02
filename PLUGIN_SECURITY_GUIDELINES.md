@@ -167,19 +167,28 @@ All marketplace plugins must be digitally signed:
 
 ## 📦 Plugin Marketplace Rules
 
+### Distribution Model:
+- **External Website:** All plugins/themes available on official ServerCraft marketplace website
+- **Admin Installation:** Only panel administrators can download and install extensions
+- **Manual Upload:** Admins download from website, then upload .zip file to their panel
+- **No Auto-Updates:** Updates require manual re-download and installation for security
+
 ### Free Community Plugins:
 - Open source on GitHub required
-- Community voting/rating system
-- Free to download and use
+- Community voting/rating system (5-star ratings)
+- Free to download and use forever
 - Creator attribution mandatory
-- No ads or tracking
+- No ads, tracking, or telemetry
+- MIT or similar permissive license
 
 ### Premium Plugins by Mike:
-- One-time purchase fee (set by Mike)
+- One-time purchase fee (price set by Mike per plugin)
 - Closed source allowed
-- Priority support included
-- Update guarantee
-- Money-back option for critical bugs
+- Lifetime license - buy once, use forever
+- Priority email support included
+- Guaranteed security certification
+- Free updates for critical bugs
+- 30-day money-back guarantee
 
 ### Review Process:
 1. **Submission** - Developer uploads plugin with documentation
