@@ -1,0 +1,111 @@
+
+╔══════════════════════════════════════════════════════════╗
+║       ServerCraft Security Testing Suite                 ║
+║       Comprehensive Security Feature Testing             ║
+╚══════════════════════════════════════════════════════════╝
+    
+Testing backend at: https://servecraft-1.preview.emergentagent.com
+Started at: 2025-11-02 18:09:09
+
+
+
+=== Test 1: Password Strength Validation ===
+❌ FAIL: Password rejection: Too short - Weak password was accepted (status: 500)
+❌ FAIL: Password rejection: No uppercase - Weak password was accepted (status: 500)
+❌ FAIL: Password rejection: No lowercase - Weak password was accepted (status: 500)
+❌ FAIL: Password rejection: No numbers - Weak password was accepted (status: 500)
+❌ FAIL: Password rejection: No special character - Weak password was accepted (status: 500)
+❌ FAIL: Password rejection: Common password - Weak password was accepted (status: 500)
+❌ FAIL: Strong password acceptance - Strong password rejected (status: 500)
+
+=== Test 2: Rate Limiting ===
+❌ FAIL: Rate limiting enforcement - Rate limit was not enforced after 15 requests
+
+=== Test 3: Account Lockout ===
+❌ FAIL: Account lockout after failed attempts - Account not locked (status: 500)
+
+=== Test 4: Session Management ===
+❌ FAIL: Session management setup - Failed to create test user
+
+=== Test 5: Token Refresh ===
+❌ FAIL: Token refresh setup - Failed to create test user
+
+=== Test 6: Input Sanitization ===
+❌ FAIL: Input sanitization: <script>alert('XSS')</script>... - Unexpected response (status: 500)
+❌ FAIL: Input sanitization: <iframe src='evil.com'></ifram... - Unexpected response (status: 500)
+❌ FAIL: Input sanitization: '; DROP TABLE users; --... - Unexpected response (status: 500)
+
+=== Test 7: Authentication Flows ===
+❌ FAIL: Protected endpoint without auth - Access granted without token (status: 500)
+❌ FAIL: Invalid token rejection - Invalid token accepted (status: 500)
+
+=== Test 8: Email Validation ===
+❌ FAIL: Email validation: notanemail - Invalid email accepted (status: 500)
+❌ FAIL: Email validation: @example.com - Invalid email accepted (status: 500)
+❌ FAIL: Email validation: user@ - Invalid email accepted (status: 500)
+❌ FAIL: Email validation: user space@example.com - Invalid email accepted (status: 500)
+
+=== Test 9: Duplicate Registration Prevention ===
+❌ FAIL: Duplicate email prevention - Duplicate allowed (status: 500)
+
+=== Test 10: CORS Headers ===
+❌ FAIL: CORS headers present - CORS headers missing
+
+============================================================
+SECURITY TEST REPORT
+============================================================
+Total Tests: 22
+✅ Passed: 0
+❌ Failed: 22
+Success Rate: 0.0%
+============================================================
+
+⚠️  FAILED TESTS:
+  • Password rejection: Too short
+    └─ Weak password was accepted (status: 500)
+  • Password rejection: No uppercase
+    └─ Weak password was accepted (status: 500)
+  • Password rejection: No lowercase
+    └─ Weak password was accepted (status: 500)
+  • Password rejection: No numbers
+    └─ Weak password was accepted (status: 500)
+  • Password rejection: No special character
+    └─ Weak password was accepted (status: 500)
+  • Password rejection: Common password
+    └─ Weak password was accepted (status: 500)
+  • Strong password acceptance
+    └─ Strong password rejected (status: 500)
+  • Rate limiting enforcement
+    └─ Rate limit was not enforced after 15 requests
+  • Account lockout after failed attempts
+    └─ Account not locked (status: 500)
+  • Session management setup
+    └─ Failed to create test user
+  • Token refresh setup
+    └─ Failed to create test user
+  • Input sanitization: <script>alert('XSS')</script>...
+    └─ Unexpected response (status: 500)
+  • Input sanitization: <iframe src='evil.com'></ifram...
+    └─ Unexpected response (status: 500)
+  • Input sanitization: '; DROP TABLE users; --...
+    └─ Unexpected response (status: 500)
+  • Protected endpoint without auth
+    └─ Access granted without token (status: 500)
+  • Invalid token rejection
+    └─ Invalid token accepted (status: 500)
+  • Email validation: notanemail
+    └─ Invalid email accepted (status: 500)
+  • Email validation: @example.com
+    └─ Invalid email accepted (status: 500)
+  • Email validation: user@
+    └─ Invalid email accepted (status: 500)
+  • Email validation: user space@example.com
+    └─ Invalid email accepted (status: 500)
+  • Duplicate email prevention
+    └─ Duplicate allowed (status: 500)
+  • CORS headers present
+    └─ CORS headers missing
+
+📄 Detailed report saved to: /app/security_test_report.json
+
+⚠️  Some tests failed. Please review and fix before deploying.
