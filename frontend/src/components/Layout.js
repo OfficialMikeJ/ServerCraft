@@ -2,7 +2,8 @@ import React, { useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "@/App";
 import { Button } from "@/components/ui/button";
-import { Server, HardDrive, Users, Settings, LogOut, LayoutDashboard } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Server, HardDrive, Users, Settings, LogOut, LayoutDashboard, Palette } from "lucide-react";
 
 const Layout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
@@ -14,6 +15,7 @@ const Layout = ({ children }) => {
     { name: "Servers", path: "/servers", icon: Server, testId: "nav-servers" },
     { name: "Nodes", path: "/nodes", icon: HardDrive, testId: "nav-nodes" },
     { name: "Users", path: "/users", icon: Users, testId: "nav-users", adminOnly: true },
+    { name: "Themes & Plugins", path: "/themes-plugins", icon: Palette, testId: "nav-themes-plugins", disabled: true },
     { name: "Settings", path: "/settings", icon: Settings, testId: "nav-settings" },
   ];
 
@@ -42,6 +44,32 @@ const Layout = ({ children }) => {
             
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            
+            if (item.disabled) {
+              return (
+                <TooltipProvider key={item.path}>
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <button
+                        data-testid={item.testId}
+                        disabled
+                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition text-slate-500 cursor-not-allowed opacity-50"
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="font-medium">{item.name}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-slate-800 border-slate-700 p-4 max-w-xs">
+                      <p className="text-center text-slate-200 leading-relaxed">
+                        This feature is still in development. Please allow me some time to finish this and test it internally. Once I have done my testing it will be fully released.
+                        <br />
+                        <span className="text-cyan-400 font-medium">- Mike</span>
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            }
             
             return (
               <button
