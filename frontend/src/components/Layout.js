@@ -15,7 +15,7 @@ const Layout = ({ children }) => {
     { name: "Servers", path: "/servers", icon: Server, testId: "nav-servers" },
     { name: "Nodes", path: "/nodes", icon: HardDrive, testId: "nav-nodes" },
     { name: "Users", path: "/users", icon: Users, testId: "nav-users", adminOnly: true },
-    { name: "Themes & Plugins", path: "/themes-plugins", icon: Palette, testId: "nav-themes-plugins", disabled: true },
+    { name: "Themes & Plugins", path: "/themes-plugins", icon: Palette, testId: "nav-themes-plugins", adminOnly: true, disabled: true },
     { name: "Settings", path: "/settings", icon: Settings, testId: "nav-settings" },
   ];
 
