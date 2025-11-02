@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
 import "@/App.css";
+import "@/themes/themed-styles.css";
+import { ThemeProvider } from "@/themes/ThemeContext";
 import LoginPage from "@/pages/LoginPage";
 import Dashboard from "@/pages/Dashboard";
 import ServersPage from "@/pages/ServersPage";
