@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "@/App";
+import { useTheme } from "@/themes/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Server, HardDrive, Users, Settings, LogOut, LayoutDashboard, Palette } from "lucide-react";
