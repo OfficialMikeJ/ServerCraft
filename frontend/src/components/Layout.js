@@ -8,6 +8,7 @@ import { Server, HardDrive, Users, Settings, LogOut, LayoutDashboard, Palette } 
 
 const Layout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
