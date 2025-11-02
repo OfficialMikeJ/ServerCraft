@@ -1,0 +1,298 @@
+/* ServerCraft Theme System - Global Styles */
+
+/* CSS Variables - Dynamically updated by ThemeContext */
+:root {
+  --theme-primary: #0891b2;
+  --theme-primaryHover: #0e7490;
+  --theme-primaryLight: #06b6d4;
+  --theme-accent: #22d3ee;
+  --theme-background: #0a0a0a;
+  --theme-backgroundAlt: #1a1a1a;
+  --theme-surface: #262626;
+  --theme-surfaceHover: #404040;
+  --theme-text: #e5e5e5;
+  --theme-textSecondary: #a3a3a3;
+  --theme-textAccent: #67e8f9;
+  --theme-border: #404040;
+  --theme-borderAccent: #0891b2;
+  --theme-success: #22c55e;
+  --theme-warning: #f59e0b;
+  --theme-error: #ef4444;
+  --theme-shadow: rgba(8, 145, 178, 0.3);
+  --theme-gradient: linear-gradient(135deg, #0891b2 0%, #164e63 100%);
+  --theme-glowColor: #0891b2;
+}
+
+/* Themed Button Styles */
+.themed-button,
+button[class*='bg-gradient'],
+button[class*='bg-cyan'],
+button[class*='bg-blue'],
+button[class*='bg-green'],
+button[class*='bg-purple'] {
+  background: var(--theme-gradient) !important;
+  color: #ffffff !important;
+  border: 2px solid var(--theme-borderAccent) !important;
+  box-shadow: 0 4px 12px var(--theme-shadow), 0 0 20px var(--theme-shadow) !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.themed-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.themed-button:hover::before {
+  left: 100%;
+}
+
+.themed-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--theme-shadow), 0 0 30px var(--theme-shadow) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+.themed-button:active {
+  transform: translateY(0);
+}
+
+/* Themed Card Styles */
+.glass {
+  background: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.glass:hover {
+  border-color: var(--theme-borderAccent) !important;
+  box-shadow: 0 6px 20px var(--theme-shadow) !important;
+}
+
+/* Themed Text Colors */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--theme-text) !important;
+}
+
+.text-accent {
+  color: var(--theme-textAccent) !important;
+}
+
+.text-primary {
+  color: var(--theme-primary) !important;
+}
+
+/* Themed Borders */
+.border-accent {
+  border-color: var(--theme-borderAccent) !important;
+}
+
+/* Status Indicators with Theme */
+.status-dot.status-online {
+  background: var(--theme-success);
+  box-shadow: 0 0 10px var(--theme-success);
+}
+
+/* Themed Navigation */
+.nav-item-active {
+  background: var(--theme-gradient) !important;
+  border: 2px solid var(--theme-borderAccent) !important;
+  box-shadow: 0 4px 12px var(--theme-shadow) !important;
+}
+
+/* Themed Inputs */
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+textarea,
+select {
+  background: var(--theme-surface) !important;
+  border: 2px solid var(--theme-border) !important;
+  color: var(--theme-text) !important;
+  transition: all 0.3s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--theme-borderAccent) !important;
+  box-shadow: 0 0 0 3px var(--theme-shadow) !important;
+  outline: none;
+}
+
+/* Themed Progress Bars */
+.progress-bar-fill {
+  background: var(--theme-gradient) !important;
+  box-shadow: 0 0 10px var(--theme-glowColor) !important;
+}
+
+/* Themed Tooltips */
+[data-tooltip]::after {
+  background: var(--theme-surface);
+  color: var(--theme-textAccent);
+  border: 1px solid var(--theme-borderAccent);
+}
+
+/* Themed Stat Cards */
+.stat-card {
+  background: var(--theme-gradient) !important;
+  border: 2px solid var(--theme-borderAccent) !important;
+  box-shadow: 0 4px 16px var(--theme-shadow) !important;
+}
+
+/* Themed Links */
+a {
+  color: var(--theme-accent);
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--theme-primaryLight);
+  text-decoration: underline;
+}
+
+/* Themed Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: var(--theme-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-primaryHover);
+}
+
+/* Themed Selection */
+::selection {
+  background: var(--theme-primary);
+  color: white;
+}
+
+/* Themed Badges */
+.badge-primary {
+  background: var(--theme-primary) !important;
+  color: white !important;
+  border: 1px solid var(--theme-borderAccent) !important;
+  box-shadow: 0 2px 8px var(--theme-shadow) !important;
+}
+
+/* Themed Alert/Toast */
+.toast-success {
+  background: var(--theme-gradient) !important;
+  border-left: 4px solid var(--theme-accent) !important;
+}
+
+/* Themed Tables */
+table thead {
+  background: var(--theme-surface) !important;
+  color: var(--theme-textAccent) !important;
+  border-bottom: 2px solid var(--theme-borderAccent) !important;
+}
+
+table tbody tr:hover {
+  background: var(--theme-surfaceHover) !important;
+}
+
+/* Themed Shadows for Depth */
+.shadow-themed {
+  box-shadow: 0 4px 12px var(--theme-shadow),
+              0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+.shadow-themed-lg {
+  box-shadow: 0 8px 24px var(--theme-shadow),
+              0 16px 48px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Themed Glow Effect */
+.glow {
+  box-shadow: 0 0 20px var(--theme-glowColor),
+              0 0 40px var(--theme-glowColor),
+              0 0 60px var(--theme-glowColor);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Themed Code Blocks */
+code, pre {
+  background: var(--theme-surface) !important;
+  color: var(--theme-textAccent) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 4px;
+}
+
+/* Themed Dividers */
+hr {
+  border-color: var(--theme-border) !important;
+}
+
+/* Themed Modal/Dialog */
+.dialog-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.dialog-content {
+  background: var(--theme-backgroundAlt) !important;
+  border: 2px solid var(--theme-borderAccent) !important;
+  box-shadow: 0 8px 32px var(--theme-shadow) !important;
+}
+
+/* Themed Dropdown */
+.dropdown-menu {
+  background: var(--theme-surface) !important;
+  border: 2px solid var(--theme-borderAccent) !important;
+  box-shadow: 0 4px 16px var(--theme-shadow) !important;
+}
+
+.dropdown-item:hover {
+  background: var(--theme-surfaceHover) !important;
+  color: var(--theme-textAccent) !important;
+}
+
+/* Themed Sidebar */
+.sidebar {
+  background: var(--theme-backgroundAlt) !important;
+  border-right: 2px solid var(--theme-border) !important;
+}
+
+.sidebar-item:hover {
+  background: var(--theme-surfaceHover) !important;
+  border-left: 4px solid var(--theme-primary) !important;
+}
+
+/* Themed Loading Spinner */
+.spinner {
+  border-top-color: var(--theme-primary) !important;
+  border-right-color: var(--theme-accent) !important;
+}
+
+/* Animation for theme transitions */
+* {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Disable transition for transforms to avoid conflicts */
+*:not(button):not(a):not(.card-hover) {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease;
+}
