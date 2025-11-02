@@ -1,165 +1,179 @@
 {
   "summary": {
-    "total": 22,
-    "passed": 0,
-    "failed": 22,
-    "success_rate": "0.0%",
-    "timestamp": "2025-11-02T18:09:39.463227"
+    "total": 24,
+    "passed": 22,
+    "failed": 2,
+    "success_rate": "91.7%",
+    "timestamp": "2025-11-02T18:11:09.194831"
   },
   "tests": [
     {
       "test": "Password rejection: Too short",
       "status": "\u274c FAIL",
       "passed": false,
-      "message": "Weak password was accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.298914"
+      "message": "Weak password was accepted (status: 422)",
+      "timestamp": "2025-11-02T18:10:37.651701"
     },
     {
       "test": "Password rejection: No uppercase",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Weak password was accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.339269"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Correctly rejected weak password",
+      "timestamp": "2025-11-02T18:10:37.693256"
     },
     {
       "test": "Password rejection: No lowercase",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Weak password was accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.380171"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Correctly rejected weak password",
+      "timestamp": "2025-11-02T18:10:37.729059"
     },
     {
       "test": "Password rejection: No numbers",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Weak password was accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.414498"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Correctly rejected weak password",
+      "timestamp": "2025-11-02T18:10:37.804150"
     },
     {
       "test": "Password rejection: No special character",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Weak password was accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.451173"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Correctly rejected weak password",
+      "timestamp": "2025-11-02T18:10:37.839479"
     },
     {
       "test": "Password rejection: Common password",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Weak password was accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.490643"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Correctly rejected weak password",
+      "timestamp": "2025-11-02T18:10:37.881406"
     },
     {
       "test": "Strong password acceptance",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Strong password rejected (status: 500)",
-      "timestamp": "2025-11-02T18:09:09.819764"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Strong password correctly accepted",
+      "timestamp": "2025-11-02T18:10:38.149673"
     },
     {
       "test": "Rate limiting enforcement",
       "status": "\u274c FAIL",
       "passed": false,
       "message": "Rate limit was not enforced after 15 requests",
-      "timestamp": "2025-11-02T18:09:15.305795"
+      "timestamp": "2025-11-02T18:10:43.614518"
     },
     {
       "test": "Account lockout after failed attempts",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Account not locked (status: 500)",
-      "timestamp": "2025-11-02T18:09:22.979215"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Account correctly locked after multiple failures",
+      "timestamp": "2025-11-02T18:10:51.284238"
     },
     {
-      "test": "Session management setup",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Failed to create test user",
-      "timestamp": "2025-11-02T18:09:25.263010"
+      "test": "Session token validation",
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Valid token accepted for protected endpoint",
+      "timestamp": "2025-11-02T18:10:53.606389"
     },
     {
-      "test": "Token refresh setup",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Failed to create test user",
-      "timestamp": "2025-11-02T18:09:27.523417"
+      "test": "Session logout",
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Logout successful",
+      "timestamp": "2025-11-02T18:10:53.641879"
+    },
+    {
+      "test": "Token invalidation after logout",
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Token correctly invalidated",
+      "timestamp": "2025-11-02T18:10:54.678242"
+    },
+    {
+      "test": "Token refresh functionality",
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "New tokens generated successfully",
+      "timestamp": "2025-11-02T18:10:56.982914"
     },
     {
       "test": "Input sanitization: <script>alert('XSS')</script>...",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Unexpected response (status: 500)",
-      "timestamp": "2025-11-02T18:09:29.781460"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Malicious input handled",
+      "timestamp": "2025-11-02T18:10:59.280160"
     },
     {
       "test": "Input sanitization: <iframe src='evil.com'></ifram...",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Unexpected response (status: 500)",
-      "timestamp": "2025-11-02T18:09:29.818834"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Malicious input handled",
+      "timestamp": "2025-11-02T18:10:59.540620"
     },
     {
       "test": "Input sanitization: '; DROP TABLE users; --...",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Unexpected response (status: 500)",
-      "timestamp": "2025-11-02T18:09:29.861051"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Malicious input handled",
+      "timestamp": "2025-11-02T18:10:59.577136"
     },
     {
       "test": "Protected endpoint without auth",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Access granted without token (status: 500)",
-      "timestamp": "2025-11-02T18:09:31.915303"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Correctly denied access without token",
+      "timestamp": "2025-11-02T18:11:01.628148"
     },
     {
       "test": "Invalid token rejection",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Invalid token accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:31.947038"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Invalid token correctly rejected",
+      "timestamp": "2025-11-02T18:11:01.659486"
     },
     {
       "test": "Email validation: notanemail",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Invalid email accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:33.983654"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Invalid email correctly rejected",
+      "timestamp": "2025-11-02T18:11:03.695468"
     },
     {
       "test": "Email validation: @example.com",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Invalid email accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:34.018564"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Invalid email correctly rejected",
+      "timestamp": "2025-11-02T18:11:03.771422"
     },
     {
       "test": "Email validation: user@",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Invalid email accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:34.054145"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Invalid email correctly rejected",
+      "timestamp": "2025-11-02T18:11:03.804857"
     },
     {
       "test": "Email validation: user space@example.com",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Invalid email accepted (status: 500)",
-      "timestamp": "2025-11-02T18:09:34.089683"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Invalid email correctly rejected",
+      "timestamp": "2025-11-02T18:11:03.842953"
     },
     {
       "test": "Duplicate email prevention",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "Duplicate allowed (status: 500)",
-      "timestamp": "2025-11-02T18:09:37.411949"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "Duplicate registration correctly prevented",
+      "timestamp": "2025-11-02T18:11:07.158113"
     },
     {
       "test": "CORS headers present",
-      "status": "\u274c FAIL",
-      "passed": false,
-      "message": "CORS headers missing",
-      "timestamp": "2025-11-02T18:09:39.462157"
+      "status": "\u2705 PASS",
+      "passed": true,
+      "message": "CORS properly configured",
+      "timestamp": "2025-11-02T18:11:09.193762"
     }
   ]
 }
