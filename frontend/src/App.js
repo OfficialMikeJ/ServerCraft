@@ -67,6 +67,7 @@ function App() {
             <Route path="/servers" element={token ? <ServersPage /> : <Navigate to="/login" />} />
             <Route path="/nodes" element={token ? <NodesPage /> : <Navigate to="/login" />} />
             <Route path="/users" element={token ? <UsersPage /> : <Navigate to="/login" />} />
+            <Route path="/themes-plugins" element={token ? <ThemesPluginsPage /> : <Navigate to="/login" />} />
             <Route path="/settings" element={token ? <SettingsPage /> : <Navigate to="/login" />} />
           </Routes>
         </BrowserRouter>
