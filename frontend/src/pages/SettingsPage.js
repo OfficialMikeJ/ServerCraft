@@ -75,6 +75,11 @@ const SettingsPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Theme Selector - Full Width First */}
+          <div className="lg:col-span-2">
+            <ThemeSelector />
+          </div>
+
           {/* General Settings */}
           <Card className="glass border-slate-700" data-testid="general-settings-card">
             <CardHeader>
