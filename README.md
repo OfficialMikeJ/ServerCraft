@@ -41,8 +41,18 @@ ServerCraft is a professional game server management panel that simplifies the d
 - 🐳 **Docker Integration** - Automated container deployment and management
 - 👥 **Sub-User Management** - Granular permission system
 - 📁 **File Explorer** - Browse and manage server files
+- 🎨 **4 Professional Themes** - Crimson, Ocean, Emerald, and Violet color schemes
 - 🎨 **Themes & Plugins** - Extensible with community/premium add-ons
 - 🔒 **Enterprise Security** - 22/24 security tests passed (91.7%)
+
+### Theme System
+- 🎨 **4 Color Schemes**: Crimson Shadow (Red), Ocean Depths (Blue), Emerald Matrix (Green), Violet Nebula (Purple)
+- 🖌️ **Dynamic Styling**: All buttons, text, borders, and UI elements change with theme
+- 💾 **Persistent**: Theme choice saved across sessions
+- 🎯 **Dual Selection**: Dropdown with Apply button or instant-apply visual cards
+- ✨ **Shadow Effects**: Professional depth with themed shadows on all buttons
+- 🌈 **Gradient Backgrounds**: Smooth color gradients matching theme
+- 🔄 **Smooth Transitions**: 0.3s animations when switching themes
 
 ### Security Features
 - ✅ Password strength validation
