@@ -150,15 +150,23 @@ clone_repository() {
     mkdir -p "$SERVERCRAFT_DIR"
     cd "$SERVERCRAFT_DIR"
     
-    info "Please enter your ServerCraft repository URL:"
-    read -p "Repository URL (or press Enter for local setup): " REPO_URL
+    DEFAULT_REPO_URL="https://github.com/OfficialMikeJ/ServerCraft.git"
     
     if [ -n "$REPO_URL" ]; then
-        git clone "$REPO_URL" . >> "$LOG_FILE" 2>&1
-        log "Repository cloned successfully"
+        info "Using repository from environment: $REPO_URL"
+    elif [ -t 0 ]; then
+        echo ""
+        info "Repository Configuration"
+        read -p "Enter ServerCraft repository URL (default: ${DEFAULT_REPO_URL}): " REPO_URL
+        REPO_URL=${REPO_URL:-$DEFAULT_REPO_URL}
     else
-        log "Skipping repository clone (local setup)"
+        warning "Non-interactive mode - using default repository"
+        REPO_URL=$DEFAULT_REPO_URL
     fi
+    
+    log "Cloning repository: $REPO_URL"
+    git clone "$REPO_URL" . >> "$LOG_FILE" 2>&1 || error "Failed to clone repository"
+    log "Repository cloned successfully"
 }
 
 # Configure environment
@@ -171,8 +179,19 @@ configure_environment() {
     # Get domain name
     echo ""
     info "Domain Configuration"
-    read -p "Enter your domain name (e.g., panel.yourdomain.com): " DOMAIN_NAME
-    read -p "Is this a static IP? (yes/no): " IS_STATIC
+    
+    if [ -t 0 ]; then
+        read -p "Enter your domain name (e.g., panel.yourdomain.com): " DOMAIN_NAME
+        read -p "Is this a static IP? (yes/no): " IS_STATIC
+    else
+        warning "Non-interactive mode - using defaults"
+        DOMAIN_NAME=${DOMAIN_NAME:-"panel.localhost"}
+        IS_STATIC=${IS_STATIC:-"no"}
+    fi
+    
+    # Create directories if they don't exist
+    mkdir -p "$SERVERCRAFT_DIR/backend"
+    mkdir -p "$SERVERCRAFT_DIR/frontend"
     
     # Backend .env
     cat > "$SERVERCRAFT_DIR/backend/.env" << EOF
@@ -192,6 +211,7 @@ EOF
     
     log "Environment configured successfully"
     log "JWT Secret generated and saved"
+    log "Domain configured: ${DOMAIN_NAME}"
 }
 
 # Setup SSL/Let's Encrypt
@@ -209,92 +229,18 @@ setup_ssl() {
         certbot certonly --standalone -d "$DOMAIN_NAME" --non-interactive --agree-tos \
             --email "admin@${DOMAIN_NAME}" >> "$LOG_FILE" 2>&1
         
-        # Setup auto-renewal
-        (crontab -l 2>/dev/null; echo "0 0,12 * * * certbot renew --quiet") | crontab -
-        
-        log "SSL certificate obtained and auto-renewal configured"
+        if [ $? -eq 0 ]; then
+            # Setup auto-renewal
+            (crontab -l 2>/dev/null; echo "0 0,12 * * * certbot renew --quiet") | crontab -
+            log "SSL certificate obtained and auto-renewal configured"
+        else
+            warning "SSL certificate generation failed. You can run 'sudo certbot certonly --standalone -d $DOMAIN_NAME' manually later."
+        fi
     else
         info "Dynamic IP detected."
-        echo ""
-        echo "For dynamic IPs, you have two options:"
-        echo "1. Use DuckDNS (Free)"
-        echo "2. Use Cloudflare (Free with API)"
-        read -p "Choose option (1 or 2): " DNS_OPTION
-        
-        if [ "$DNS_OPTION" = "1" ]; then
-            setup_duckdns
-        else
-            setup_cloudflare
-        fi
+        warning "SSL setup skipped for dynamic IP. Please configure SSL manually after installation."
+        warning "Visit: https://letsencrypt.org/docs/ for SSL setup guide"
     fi
-}
-
-# Setup DuckDNS
-setup_duckdns() {
-    log "Setting up DuckDNS..."
-    
-    read -p "Enter your DuckDNS subdomain (e.g., myserver): " DUCK_SUBDOMAIN
-    read -p "Enter your DuckDNS token: " DUCK_TOKEN
-    
-    # Create DuckDNS update script
-    mkdir -p /root/duckdns
-    cat > /root/duckdns/duck.sh << EOF
-#!/bin/bash
-echo url="https://www.duckdns.org/update?domains=${DUCK_SUBDOMAIN}&token=${DUCK_TOKEN}&ip=" | curl -k -o /root/duckdns/duck.log -K -
-EOF
-    
-    chmod +x /root/duckdns/duck.sh
-    
-    # Test DuckDNS
-    /root/duckdns/duck.sh
-    if grep -q "OK" /root/duckdns/duck.log; then
-        log "DuckDNS configured successfully"
-    else
-        warning "DuckDNS test failed. Please check your credentials"
-    fi
-    
-    # Add to crontab
-    (crontab -l 2>/dev/null; echo "*/5 * * * * /root/duckdns/duck.sh >/dev/null 2>&1") | crontab -
-    
-    # Obtain SSL certificate
-    certbot certonly --manual --preferred-challenges dns -d "${DUCK_SUBDOMAIN}.duckdns.org" \
-        --non-interactive --agree-tos --email "admin@${DUCK_SUBDOMAIN}.duckdns.org" \
-        >> "$LOG_FILE" 2>&1
-    
-    log "SSL certificate obtained for DuckDNS domain"
-}
-
-# Setup Cloudflare
-setup_cloudflare() {
-    log "Setting up Cloudflare..."
-    
-    read -p "Enter your Cloudflare API key: " CF_API_KEY
-    read -p "Enter your Cloudflare email: " CF_EMAIL
-    read -p "Enter your Zone ID: " CF_ZONE_ID
-    read -p "Enter your domain record name (e.g., panel.yourdomain.com): " CF_RECORD_NAME
-    
-    # Create Cloudflare credentials file
-    mkdir -p /root/.secrets
-    cat > /root/.secrets/cloudflare.ini << EOF
-dns_cloudflare_email = ${CF_EMAIL}
-dns_cloudflare_api_key = ${CF_API_KEY}
-EOF
-    
-    chmod 600 /root/.secrets/cloudflare.ini
-    
-    # Install Cloudflare plugin
-    if [ "$PACKAGE_MANAGER" = "apt" ]; then
-        apt install -y python3-certbot-dns-cloudflare >> "$LOG_FILE" 2>&1
-    fi
-    
-    # Obtain SSL certificate
-    certbot certonly --dns-cloudflare \
-        --dns-cloudflare-credentials /root/.secrets/cloudflare.ini \
-        -d "$CF_RECORD_NAME" \
-        --non-interactive --agree-tos --email "$CF_EMAIL" \
-        >> "$LOG_FILE" 2>&1
-    
-    log "SSL certificate obtained via Cloudflare"
 }
 
 # Configure firewall
@@ -329,7 +275,15 @@ start_servercraft() {
     log "Starting ServerCraft..."
     
     cd "$SERVERCRAFT_DIR"
-    docker-compose up -d >> "$LOG_FILE" 2>&1
+    
+    # Try docker-compose (older) or docker compose (newer)
+    if docker-compose up -d >> "$LOG_FILE" 2>&1; then
+        log "ServerCraft started with docker-compose"
+    elif docker compose up -d >> "$LOG_FILE" 2>&1; then
+        log "ServerCraft started with docker compose"
+    else
+        error "Failed to start ServerCraft. Check logs at $LOG_FILE"
+    fi
     
     log "ServerCraft started successfully"
 }
@@ -377,7 +331,11 @@ print_summary() {
     echo "  • Installation directory: $SERVERCRAFT_DIR"
     echo "  • Log file: $LOG_FILE"
     echo "  • JWT Secret: (saved in backend/.env)"
-    echo "  • SSL Certificates: /etc/letsencrypt/live/"
+    if [ "$IS_STATIC" = "yes" ]; then
+        echo "  • SSL Certificates: /etc/letsencrypt/live/"
+    else
+        echo "  • SSL: Not configured (dynamic IP - configure manually)"
+    fi
     echo ""
     echo "Next Steps:"
     echo "  1. Open your browser to https://${DOMAIN_NAME}"
@@ -393,7 +351,7 @@ print_summary() {
     echo ""
     echo "Support:"
     echo "  • Documentation: https://docs.servercraft.com"
-    echo "  • Issues: https://github.com/yourusername/servercraft/issues"
+    echo "  • Issues: https://github.com/OfficialMikeJ/ServerCraft/issues"
     echo ""
 }
 
