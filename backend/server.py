@@ -1033,6 +1033,71 @@ async def list_backups(current_user: User = Depends(get_current_user)):
         logger.error(f"Failed to list backups: {e}")
         raise HTTPException(status_code=500, detail="Failed to list backups")
 
+@api_router.get("/backups/config")
+async def get_backup_config(current_user: User = Depends(get_current_user)):
+    """
+    Get backup configuration
+    """
+    try:
+        config = await db.backup_config.find_one({}, {"_id": 0})
+        if not config:
+            # Return default config
+            return {
+                "schedule": "daily",
+                "retention_count": 10,
+                "auto_backup_enabled": False
+            }
+        return config
+    except Exception as e:
+        logger.error(f"Failed to get backup config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get backup config")
+
+@api_router.post("/backups/config")
+async def configure_backup_settings(
+    request: Request,
+    config_request: BackupConfigRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Configure backup settings (Admin only)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        config = {
+            "schedule": config_request.schedule,
+            "retention_count": config_request.retention_count,
+            "auto_backup_enabled": config_request.auto_backup_enabled,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user.id
+        }
+        
+        # Upsert config
+        await db.backup_config.update_one(
+            {},
+            {"$set": config},
+            upsert=True
+        )
+        
+        # Log action
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "configure_backup",
+            "backup",
+            {"schedule": config_request.schedule},
+            ip_address
+        )
+        
+        logger.info(f"Backup configuration updated by {current_user.email}")
+        
+        return {"success": True, "message": "Backup configuration updated"}
+        
+    except Exception as e:
+        logger.error(f"Failed to configure backup: {e}")
+        raise HTTPException(status_code=500, detail="Failed to configure backup")
+
 @api_router.get("/backups/{backup_id}", response_model=BackupMetadata)
 async def get_backup(
     backup_id: str,
