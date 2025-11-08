@@ -130,7 +130,7 @@ class ServerCraftTester:
                 
                 if response.status_code == 200:
                     data = response.json()
-                    if "access_token" in data:
+                    if "access_token" in data and data["access_token"]:
                         self.admin_token = data["access_token"]
                         # Store successful credentials for future use
                         self.admin_credentials = creds
@@ -141,6 +141,14 @@ class ServerCraftTester:
                             f"Login successful with {creds['email']}"
                         )
                         break
+                    elif data.get("requires_2fa"):
+                        # 2FA is already enabled, can't proceed with normal tests
+                        self.log_result(
+                            "Login Functionality",
+                            False,
+                            f"2FA already enabled for {creds['email']} - cannot run fresh 2FA tests"
+                        )
+                        return
                 elif response.status_code == 401:
                     continue  # Try next credentials
                 else:
