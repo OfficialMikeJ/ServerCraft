@@ -3,6 +3,7 @@ import axios from "axios";
 import { API, AuthContext } from "@/App";
 import Layout from "@/components/Layout";
 import ThemeSelector from "@/components/ThemeSelector";
+import TwoFactorSetup from "@/components/TwoFactorSetup";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
