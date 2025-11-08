@@ -820,11 +820,12 @@ class ServerCraftTester:
         """Test Backup Codes functionality"""
         print("\n=== Testing Backup Codes ===")
         
-        if not self.admin_token:
-            self.log_result("Backup Codes", False, "Cannot test - no admin token available")
+        token = self.admin_token or self.get_fresh_admin_token()
+        if not token:
+            self.log_result("Backup Codes", False, "Cannot get admin token")
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Test backup code regeneration
         try:
