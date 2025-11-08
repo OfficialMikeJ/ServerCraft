@@ -1,0 +1,33 @@
+{
+  "id": "your-plugin-id",
+  "name": "Your Plugin Name",
+  "version": "1.0.0",
+  "description": "Brief description of what your plugin does",
+  "author": "Your Name",
+  "servercraft_version": "1.0.0",
+  "permissions": [
+    "servers:read",
+    "servers:write",
+    "users:read"
+  ],
+  "routes": [
+    {
+      "path": "/custom-endpoint",
+      "method": "GET",
+      "handler": "main.custom_handler"
+    }
+  ],
+  "ui": {
+    "enabled": true,
+    "tab_name": "Plugin Tab",
+    "icon": "plugin",
+    "route": "/plugin-page"
+  },
+  "settings": {
+    "configurable": true,
+    "schema": {
+      "api_key": {"type": "string", "required": false},
+      "enabled": {"type": "boolean", "default": true}
+    }
+  }
+}
