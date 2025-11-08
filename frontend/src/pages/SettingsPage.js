@@ -81,6 +81,11 @@ const SettingsPage = () => {
             <ThemeSelector />
           </div>
 
+          {/* Two-Factor Authentication - Full Width */}
+          <div className="lg:col-span-2">
+            <TwoFactorSetup />
+          </div>
+
           {/* General Settings */}
           <Card className="glass border-slate-700" data-testid="general-settings-card">
             <CardHeader>
