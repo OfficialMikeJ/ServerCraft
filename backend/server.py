@@ -305,6 +305,282 @@ async def get_login_history(
     ).sort("timestamp", -1).limit(limit).to_list(limit)
     return history
 
+# ============================================
+# Plugin Management System
+# ============================================
+
+class Plugin(BaseModel):
+    """Plugin metadata"""
+    id: str
+    name: str
+    version: str
+    description: Optional[str] = None
+    author: Optional[str] = None
+    enabled: bool = False
+    installed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    manifest: Dict[str, Any] = {}
+
+class PluginUploadResponse(BaseModel):
+    success: bool
+    message: str
+    plugin_id: Optional[str] = None
+
+# Plugin storage directory
+PLUGIN_DIR = Path("/app/plugins")
+PLUGIN_DIR.mkdir(exist_ok=True)
+
+def validate_plugin_manifest(manifest: Dict[str, Any]) -> tuple[bool, str]:
+    """Validate plugin manifest structure"""
+    required_fields = ['id', 'name', 'version', 'description']
+    for field in required_fields:
+        if field not in manifest:
+            return False, f"Missing required field: {field}"
+    
+    # Validate plugin ID format (lowercase, hyphens only)
+    if not re.match(r'^[a-z0-9-]+$', manifest['id']):
+        return False, "Invalid plugin ID format (use lowercase and hyphens only)"
+    
+    return True, "Valid"
+
+@api_router.post("/plugins/upload", response_model=PluginUploadResponse)
+@limiter.limit("5/hour")
+async def upload_plugin(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload and install a plugin (Admin only)
+    """
+    # Check admin permission
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Validate file type
+        if not file.filename.endswith('.zip'):
+            raise HTTPException(status_code=400, detail="Only .zip files are allowed")
+        
+        # Validate file size (max 10MB)
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+        
+        # Save to temporary location
+        temp_path = PLUGIN_DIR / f"temp_{uuid.uuid4()}.zip"
+        async with aiofiles.open(temp_path, 'wb') as f:
+            await f.write(content)
+        
+        # Extract and validate
+        import zipfile
+        extract_path = PLUGIN_DIR / f"temp_{uuid.uuid4()}"
+        extract_path.mkdir(exist_ok=True)
+        
+        with zipfile.ZipFile(temp_path, 'r') as zip_ref:
+            # Security: Check for path traversal attacks
+            for member in zip_ref.namelist():
+                if '..' in member or member.startswith('/'):
+                    temp_path.unlink()
+                    raise HTTPException(status_code=400, detail="Invalid zip file structure")
+            zip_ref.extractall(extract_path)
+        
+        # Find manifest.json
+        manifest_files = list(extract_path.glob("**/manifest.json"))
+        if not manifest_files:
+            temp_path.unlink()
+            raise HTTPException(status_code=400, detail="manifest.json not found in plugin")
+        
+        manifest_path = manifest_files[0]
+        plugin_root = manifest_path.parent
+        
+        # Read and validate manifest
+        async with aiofiles.open(manifest_path, 'r') as f:
+            manifest_content = await f.read()
+        manifest = json.loads(manifest_content)
+        
+        is_valid, message = validate_plugin_manifest(manifest)
+        if not is_valid:
+            temp_path.unlink()
+            raise HTTPException(status_code=400, detail=message)
+        
+        plugin_id = manifest['id']
+        
+        # Check if plugin already exists
+        existing = await db.plugins.find_one({"id": plugin_id}, {"_id": 0})
+        if existing:
+            temp_path.unlink()
+            raise HTTPException(status_code=400, detail="Plugin already installed")
+        
+        # Move to final location
+        final_plugin_path = PLUGIN_DIR / plugin_id
+        if final_plugin_path.exists():
+            import shutil
+            shutil.rmtree(final_plugin_path)
+        
+        import shutil
+        shutil.move(str(plugin_root), str(final_plugin_path))
+        
+        # Clean up
+        temp_path.unlink()
+        shutil.rmtree(extract_path, ignore_errors=True)
+        
+        # Save to database
+        plugin = Plugin(
+            id=plugin_id,
+            name=manifest['name'],
+            version=manifest['version'],
+            description=manifest.get('description'),
+            author=manifest.get('author'),
+            enabled=False,
+            manifest=manifest
+        )
+        
+        await db.plugins.insert_one(plugin.model_dump())
+        
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "upload_plugin",
+            "plugin",
+            {"plugin_id": plugin_id},
+            ip_address
+        )
+        
+        logger.info(f"Plugin uploaded: {plugin_id} by {current_user.email}")
+        
+        return PluginUploadResponse(
+            success=True,
+            message="Plugin uploaded successfully",
+            plugin_id=plugin_id
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upload plugin: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload plugin")
+
+@api_router.get("/plugins", response_model=List[Plugin])
+async def get_plugins(current_user: User = Depends(get_current_user)):
+    """Get all installed plugins"""
+    try:
+        plugins = await db.plugins.find({}, {"_id": 0}).to_list(length=None)
+        return plugins
+    except Exception as e:
+        logger.error(f"Failed to fetch plugins: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch plugins")
+
+@api_router.put("/plugins/{plugin_id}/enable")
+async def enable_plugin(
+    plugin_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """Enable a plugin (Admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        result = await db.plugins.update_one(
+            {"id": plugin_id},
+            {"$set": {"enabled": True}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Plugin not found")
+        
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "enable_plugin",
+            "plugin",
+            {"plugin_id": plugin_id},
+            ip_address
+        )
+        
+        logger.info(f"Plugin enabled: {plugin_id}")
+        return {"success": True, "message": "Plugin enabled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to enable plugin: {e}")
+        raise HTTPException(status_code=500, detail="Failed to enable plugin")
+
+@api_router.put("/plugins/{plugin_id}/disable")
+async def disable_plugin(
+    plugin_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """Disable a plugin (Admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        result = await db.plugins.update_one(
+            {"id": plugin_id},
+            {"$set": {"enabled": False}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Plugin not found")
+        
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "disable_plugin",
+            "plugin",
+            {"plugin_id": plugin_id},
+            ip_address
+        )
+        
+        logger.info(f"Plugin disabled: {plugin_id}")
+        return {"success": True, "message": "Plugin disabled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to disable plugin: {e}")
+        raise HTTPException(status_code=500, detail="Failed to disable plugin")
+
+@api_router.delete("/plugins/{plugin_id}")
+async def delete_plugin(
+    plugin_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a plugin (Admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Delete from database
+        result = await db.plugins.delete_one({"id": plugin_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Plugin not found")
+        
+        # Delete plugin files
+        plugin_path = PLUGIN_DIR / plugin_id
+        if plugin_path.exists():
+            import shutil
+            shutil.rmtree(plugin_path)
+        
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "delete_plugin",
+            "plugin",
+            {"plugin_id": plugin_id},
+            ip_address
+        )
+        
+        logger.info(f"Plugin deleted: {plugin_id}")
+        return {"success": True, "message": "Plugin deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete plugin: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete plugin")
+
 # Include router
 app.include_router(api_router)
 
