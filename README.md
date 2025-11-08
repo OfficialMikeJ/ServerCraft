@@ -813,12 +813,130 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Accent: #c4b5fd
 - Perfect for: Futuristic, space theme
 
+**5. Gray & White (Monochrome)**
+- Primary: #71717a
+- Accent: #d4d4d8
+- Perfect for: Clean, professional
+
+**6. Orange Inferno**
+- Primary: #f97316
+- Accent: #fdba74
+- Perfect for: Bold, energetic
+
+**7. American Patriot**
+- Primary: #3b82f6
+- Accent: #ef4444
+- Perfect for: Patriotic theme
+
+**8. Shadow Strike**
+- Primary: #d4d4d8
+- Accent: #ffffff
+- Perfect for: Dark, mysterious
+
 ### Theme Features
 - **Dropdown Selector**: Choose theme from dropdown + click "Apply"
 - **Visual Cards**: Click any theme card for instant apply
 - **Live Preview**: See button & text samples before applying
 - **Persistent**: Saves to localStorage automatically
 - **Dynamic**: All UI elements update instantly (buttons, text, borders, shadows)
+
+---
+
+## 🔌 Plugin Development
+
+ServerCraft features a secure, extensible plugin system that allows you to add custom functionality.
+
+### Plugin Structure
+```
+plugin-name/
+├── manifest.json       # Plugin metadata and configuration
+├── main.py            # Backend API endpoints
+├── frontend/          # React components (optional)
+│   └── PluginPage.jsx
+└── README.md          # Documentation
+```
+
+### Creating a Plugin
+
+**1. Use the Template**
+```bash
+cp -r /app/plugins/PLUGIN_TEMPLATE /app/plugins/my-plugin
+cd /app/plugins/my-plugin
+```
+
+**2. Edit manifest.json**
+```json
+{
+  "id": "my-plugin",
+  "name": "My Custom Plugin",
+  "version": "1.0.0",
+  "description": "Brief description",
+  "author": "Your Name",
+  "permissions": ["servers:read", "servers:write"],
+  "ui": {
+    "enabled": true,
+    "tab_name": "My Plugin",
+    "route": "/my-plugin"
+  }
+}
+```
+
+**3. Implement Backend Logic (main.py)**
+```python
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/my-endpoint")
+async def my_handler():
+    return {"status": "ok"}
+```
+
+**4. Package and Upload**
+```bash
+zip -r my-plugin.zip my-plugin/
+# Upload via Settings → Plugins → Upload Plugin
+```
+
+### Example Plugins
+
+**Server Billing Plugin** (`/plugins/example-billing-plugin`)
+- Per-slot and per-server pricing
+- Multiple subscription periods (1, 3, 6, 12 months)
+- Automatic renewals
+- Subscription management
+
+**Enhanced Sub-User Management** (`/plugins/example-subuser-plugin`)
+- Granular permissions per server
+- Suspend/ban accounts
+- IP blocking
+- Fully restrict access option
+
+### Security Guidelines
+
+✅ **DO:**
+- Use ServerCraft API endpoints
+- Validate all inputs
+- Request minimal permissions
+- Handle errors gracefully
+
+❌ **DON'T:**
+- Access database directly
+- Execute system commands without validation
+- Store secrets in manifest.json
+- Bypass authentication
+
+### Available Permissions
+- `servers:read` - View servers
+- `servers:write` - Manage servers
+- `users:read` - View users
+- `users:write` - Manage users
+- `files:read` - Read files
+- `files:write` - Modify files
+- `settings:read` - View settings
+- `settings:write` - Modify settings
+
+For complete documentation, see `/plugins/PLUGIN_TEMPLATE/README.md`
 - **Smooth Transitions**: 0.3s animations between themes
 
 ### How to Change Theme
