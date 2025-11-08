@@ -79,16 +79,13 @@ class ServerCraftTester:
         
         try:
             # First, let's check if there's an admin user in the system
-            # We'll try with common admin credentials
+            # We'll try with test admin credentials
             test_credentials = [
+                {"email": "testadmin@servercraft.com", "password": "testpassword123"},
                 {"email": "admin@servercraft.com", "password": "admin123"},
                 {"email": "admin@servercraft.com", "password": "password123"},
-                {"email": "admin@servercraft.com", "password": "servercraft123"},
-                {"email": "admin@servercraft.com", "password": "admin"},
                 {"email": "test@example.com", "password": "password123"},
-                {"email": "test@example.com", "password": "testpassword123"},
-                {"email": "test@example.com", "password": "test123"},
-                {"email": "admin@example.com", "password": "password123"}
+                {"email": "test@example.com", "password": "testpassword123"}
             ]
             
             login_success = False
