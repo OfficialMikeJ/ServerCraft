@@ -119,6 +119,9 @@ backend:
       - working: true
         agent: "main"
         comment: "Removed /auth/register endpoint from server.py (lines 187-230)"
+      - working: true
+        agent: "testing"
+        comment: "✅ VERIFIED: Registration endpoint properly removed (HTTP 404). Login endpoint still functional with admin credentials."
   
   - task: "Plugin management API"
     implemented: true
