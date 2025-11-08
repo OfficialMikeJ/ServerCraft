@@ -14,7 +14,11 @@ const ThemeSelector = () => {
     crimson: { primary: '#dc2626', accent: '#f87171', name: 'Crimson Shadow' },
     ocean: { primary: '#0891b2', accent: '#22d3ee', name: 'Ocean Depths' },
     emerald: { primary: '#10b981', accent: '#6ee7b7', name: 'Emerald Matrix' },
-    violet: { primary: '#8b5cf6', accent: '#c4b5fd', name: 'Violet Nebula' }
+    violet: { primary: '#8b5cf6', accent: '#c4b5fd', name: 'Violet Nebula' },
+    monochrome: { primary: '#71717a', accent: '#d4d4d8', name: 'Gray & White' },
+    inferno: { primary: '#f97316', accent: '#fdba74', name: 'Orange Inferno' },
+    patriot: { primary: '#3b82f6', accent: '#ef4444', name: 'American Patriot' },
+    shadow: { primary: '#d4d4d8', accent: '#ffffff', name: 'Shadow Strike' }
   };
 
   const handleApplyTheme = () => {
