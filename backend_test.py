@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend API Testing for ServerCraft Panel
-Tests registration removal, plugin management, and authentication
+Tests Two-Factor Authentication (2FA), registration removal, plugin management, and authentication
 """
 
 import requests
@@ -11,6 +11,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 import time
+import pyotp
+import re
 
 # Get backend URL from frontend env
 BACKEND_URL = "https://servercraft-admin.preview.emergentagent.com/api"
