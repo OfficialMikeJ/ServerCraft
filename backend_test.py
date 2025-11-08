@@ -1696,7 +1696,7 @@ class ServerCraftTester:
 
     def run_all_tests(self):
         """Run all tests in sequence"""
-        print(f"🚀 Starting ServerCraft Backend Tests - 2FA Focus")
+        print(f"🚀 Starting ServerCraft Backend Tests - Backup & Disaster Recovery Focus")
         print(f"Backend URL: {self.base_url}")
         print("=" * 60)
         
@@ -1704,7 +1704,22 @@ class ServerCraftTester:
         self.test_registration_removed()
         self.test_login_functionality()
         
-        # Run comprehensive 2FA tests
+        # Run comprehensive backup tests (main focus)
+        self.test_backup_creation()
+        self.test_backup_list()
+        self.test_backup_details()
+        self.test_backup_verification()
+        self.test_backup_configuration()
+        self.test_backup_security()
+        self.test_backup_delete()  # Run delete last to clean up
+        
+        # Run plugin tests
+        self.test_plugin_list_endpoint()
+        self.test_plugin_upload_validation()
+        self.test_plugin_management()
+        self.test_non_admin_access()
+        
+        # Run 2FA tests (already tested in previous sessions)
         self.test_2fa_setup_flow()
         self.test_2fa_enable()
         self.test_2fa_status()
@@ -1713,12 +1728,6 @@ class ServerCraftTester:
         self.test_trusted_devices()
         self.test_2fa_disable()
         self.test_2fa_security()
-        
-        # Run plugin tests
-        self.test_plugin_list_endpoint()
-        self.test_plugin_upload_validation()
-        self.test_plugin_management()
-        self.test_non_admin_access()
         
         # Summary
         print("\n" + "=" * 60)
