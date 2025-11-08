@@ -157,16 +157,13 @@ class ServerCraftTester:
         """Test 3: GET /api/plugins - List plugins"""
         print("\n=== Testing Plugin List Endpoint ===")
         
-        if not self.admin_token:
-            self.log_result(
-                "Plugin List Endpoint",
-                False,
-                "Cannot test - no admin token available"
-            )
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Plugin List Endpoint", False, "Cannot get fresh admin token")
             return
         
         try:
-            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            headers = {"Authorization": f"Bearer {fresh_token}"}
             response = self.session.get(f"{self.base_url}/plugins", headers=headers)
             
             if response.status_code == 200:
