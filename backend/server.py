@@ -184,51 +184,6 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 # Auth Routes with Rate Limiting
-@api_router.post("/auth/register", response_model=Token)
-@limiter.limit("5/hour")
-async def register(request: Request, user_data: UserCreate):
-    # Sanitize inputs
-    user_data.username = InputSanitizer.sanitize_string(user_data.username, 50)
-    
-    # Validate password strength
-    is_strong, message = PasswordValidator.validate_strength(user_data.password)
-    if not is_strong:
-        raise HTTPException(status_code=400, detail=message)
-    
-    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    hashed_pw = hash_password(user_data.password)
-    user = User(
-        username=user_data.username,
-        email=user_data.email,
-        role=user_data.role,
-        permissions=user_data.permissions
-    )
-    
-    user_dict = user.model_dump()
-    user_dict["hashed_password"] = hashed_pw
-    user_dict["created_at"] = user_dict["created_at"].isoformat()
-    user_dict["locked"] = False
-    
-    await db.users.insert_one(user_dict)
-    
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
-    
-    # Create session
-    ip_address = get_client_ip(request)
-    user_agent = request.headers.get("User-Agent", "Unknown")
-    await session_manager.create_session(user.id, access_token, ip_address, user_agent)
-    await account_security.record_successful_login(user.email, ip_address, user_agent)
-    await audit_logger.log(user.id, "register", "user", {"email": user.email}, ip_address)
-    
-    logger.info(f"User registered: {user.email}")
-    
-    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer", user=user)
-
 @api_router.post("/auth/login", response_model=Token)
 @limiter.limit("10/minute")
 async def login(request: Request, credentials: UserLogin):
