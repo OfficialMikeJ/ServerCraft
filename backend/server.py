@@ -143,6 +143,37 @@ class TwoFactorDisableRequest(BaseModel):
 class BackupCodeVerifyRequest(BaseModel):
     code: str
 
+# Backup Models
+class BackupMetadata(BaseModel):
+    id: str
+    timestamp: str
+    file_path: str
+    file_size: int
+    checksum: str
+    database_included: bool
+    files_included: bool
+    file_dirs: List[str]
+    created_by: str
+    description: Optional[str] = None
+
+class CreateBackupRequest(BaseModel):
+    description: Optional[str] = None
+    password: str
+    include_database: bool = True
+    include_files: bool = True
+    file_dirs: List[str] = Field(default_factory=list)
+
+class RestoreBackupRequest(BaseModel):
+    password: str
+    restore_database: bool = True
+    restore_files: bool = True
+
+class BackupConfigRequest(BaseModel):
+    schedule: str  # 'hourly', 'daily', 'weekly', 'monthly', 'disabled'
+    retention_count: int = 10
+    auto_backup_enabled: bool = True
+    default_password: Optional[str] = None
+
 # Helper Functions
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
