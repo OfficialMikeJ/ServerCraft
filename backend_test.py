@@ -688,11 +688,12 @@ class ServerCraftTester:
         """Test 2FA Status endpoint"""
         print("\n=== Testing 2FA Status ===")
         
-        if not self.admin_token:
-            self.log_result("2FA Status", False, "Cannot test - no admin token available")
+        token = self.admin_token or self.get_fresh_admin_token()
+        if not token:
+            self.log_result("2FA Status", False, "Cannot get admin token")
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         try:
             response = self.session.get(f"{self.base_url}/auth/2fa/status", headers=headers)
