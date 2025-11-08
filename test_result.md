@@ -154,6 +154,126 @@ backend:
           - File validation: Rejects non-zip files, validates manifest.json structure
           - Successfully uploaded, enabled, disabled, and deleted test plugin
 
+  - task: "Two-Factor Authentication (2FA) Setup Flow"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/auth/2fa/setup endpoint - generates TOTP secret, QR code, and 10 backup codes with rate limiting (5/hour)"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: 2FA setup generates valid base32 secret, base64 QR code data URI, and 10 backup codes. Rate limiting enforced at 5/hour."
+
+  - task: "Two-Factor Authentication (2FA) Enable"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/auth/2fa/enable endpoint - enables 2FA after TOTP token and password verification"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: Invalid tokens properly rejected (401), valid TOTP tokens enable 2FA successfully. Password verification required."
+
+  - task: "Two-Factor Authentication (2FA) Status"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/auth/2fa/status endpoint - returns enabled status and trusted device count"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: Status endpoint returns correct enabled state and trusted device count. Authentication required."
+
+  - task: "Login with 2FA Flow"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated POST /api/auth/login endpoint - supports 2FA verification with temp tokens, TOTP tokens, and backup codes"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: Login with email+password returns requires_2fa=true and temp_token. Login with valid TOTP token grants full access. Two-step flow working correctly."
+
+  - task: "Backup Codes Management"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented backup codes - 10 codes generated, hashed storage, one-time use, GET /api/auth/2fa/backup-codes for regeneration"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: Backup codes work for login authentication. Codes are removed after use. Regeneration endpoint generates 10 new codes. Rate limiting enforced."
+
+  - task: "Trusted Devices Management"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented trusted devices - remember_device option, 30-day expiry, device tokens, DELETE /api/auth/2fa/trusted-devices endpoint"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: remember_device=true generates device_token. Subsequent logins with device_token bypass 2FA. Trusted devices can be cleared via DELETE endpoint."
+
+  - task: "Two-Factor Authentication (2FA) Disable"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/auth/2fa/disable endpoint - disables 2FA after password and token verification, clears secrets and trusted devices"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: 2FA disable requires password + TOTP token verification. Successfully disables 2FA and clears all secrets. Login no longer requires 2FA after disable."
+
+  - task: "Two-Factor Authentication (2FA) Security Features"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented security features - rate limiting on all 2FA endpoints, authentication requirements, audit logging, token verification endpoint"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: All 2FA endpoints require authentication (401/403 without auth). POST /api/auth/2fa/verify endpoint validates TOTP tokens correctly. Audit logging working for all 2FA actions."
+
 frontend:
   - task: "Add 4 new themes"
     implemented: true
