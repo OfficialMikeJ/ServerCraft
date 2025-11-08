@@ -980,15 +980,17 @@ class ServerCraftTester:
         """Test 2FA Disable functionality"""
         print("\n=== Testing 2FA Disable ===")
         
-        if not self.admin_token:
-            self.log_result("2FA Disable", False, "Cannot test - no admin token available")
-            return
-        
         if not hasattr(self, 'twofa_enabled') or not self.twofa_enabled:
             self.log_result("2FA Disable", False, "Cannot test - 2FA not enabled")
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        # Get fresh token for disable operation
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("2FA Disable", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
         
         # Test disable with valid credentials
         try:
