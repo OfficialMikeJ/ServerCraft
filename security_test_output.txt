@@ -4,7 +4,7 @@
 ║       Comprehensive Security Feature Testing             ║
 ╚══════════════════════════════════════════════════════════╝
     
-Testing backend at: https://servecraft-1.preview.emergentagent.com
+Testing backend at: https://servercraft-admin.preview.emergentagent.com
 Started at: 2025-11-02 18:09:09
 
 
