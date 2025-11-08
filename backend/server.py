@@ -381,6 +381,231 @@ async def logout(request: Request, current_user: User = Depends(get_current_user
     
     return {"message": "Logged out successfully"}
 
+# ============================================
+# Two-Factor Authentication (2FA) Endpoints
+# ============================================
+
+@api_router.post("/auth/2fa/setup", response_model=TwoFactorSetupResponse)
+@limiter.limit("5/hour")
+async def setup_2fa(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    Generate 2FA secret and QR code for setup
+    """
+    # Check if 2FA is already enabled
+    user_data = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    if user_data.get("two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA is already enabled")
+    
+    # Generate new secret
+    secret = TwoFactorAuth.generate_secret()
+    
+    # Generate QR code
+    qr_code = TwoFactorAuth.generate_qr_code(secret, current_user.email)
+    
+    # Generate backup codes
+    backup_codes = TwoFactorAuth.generate_backup_codes(10)
+    
+    # Hash backup codes for storage
+    hashed_codes = [TwoFactorAuth.hash_backup_code(code) for code in backup_codes]
+    
+    # Store secret temporarily (not enabled until verified)
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {
+            "two_factor_secret": secret,
+            "backup_codes": hashed_codes,
+            "two_factor_enabled": False
+        }}
+    )
+    
+    ip_address = get_client_ip(request)
+    await audit_logger.log(current_user.id, "2fa_setup_initiated", "auth", {}, ip_address)
+    
+    logger.info(f"2FA setup initiated for user: {current_user.email}")
+    
+    return TwoFactorSetupResponse(
+        secret=secret,
+        qr_code=qr_code,
+        backup_codes=backup_codes
+    )
+
+@api_router.post("/auth/2fa/enable")
+@limiter.limit("10/hour")
+async def enable_2fa(
+    request: Request,
+    enable_request: TwoFactorEnableRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Enable 2FA after verifying TOTP token
+    """
+    user_data = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    
+    if user_data.get("two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA is already enabled")
+    
+    secret = user_data.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="2FA setup not initiated. Call /auth/2fa/setup first")
+    
+    # Verify password
+    if not verify_password(enable_request.password, user_data["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    # Verify TOTP token
+    if not TwoFactorAuth.verify_token(secret, enable_request.token):
+        raise HTTPException(status_code=401, detail="Invalid 2FA token")
+    
+    # Enable 2FA
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"two_factor_enabled": True}}
+    )
+    
+    ip_address = get_client_ip(request)
+    await audit_logger.log(current_user.id, "2fa_enabled", "auth", {}, ip_address)
+    
+    logger.info(f"2FA enabled for user: {current_user.email}")
+    
+    return {"success": True, "message": "2FA enabled successfully"}
+
+@api_router.post("/auth/2fa/disable")
+@limiter.limit("10/hour")
+async def disable_2fa(
+    request: Request,
+    disable_request: TwoFactorDisableRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Disable 2FA after verifying password and token
+    """
+    user_data = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    
+    if not user_data.get("two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA is not enabled")
+    
+    # Verify password
+    if not verify_password(disable_request.password, user_data["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    # Verify TOTP token or backup code
+    secret = user_data.get("two_factor_secret")
+    token_valid = TwoFactorAuth.verify_token(secret, disable_request.token)
+    
+    if not token_valid:
+        # Check backup codes
+        backup_codes = user_data.get("backup_codes", [])
+        for hashed_code in backup_codes:
+            if TwoFactorAuth.verify_backup_code(disable_request.token, hashed_code):
+                token_valid = True
+                break
+    
+    if not token_valid:
+        raise HTTPException(status_code=401, detail="Invalid 2FA token")
+    
+    # Disable 2FA and clear secrets
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {
+            "two_factor_enabled": False,
+            "two_factor_secret": None,
+            "backup_codes": [],
+            "trusted_devices": []
+        }}
+    )
+    
+    ip_address = get_client_ip(request)
+    await audit_logger.log(current_user.id, "2fa_disabled", "auth", {}, ip_address)
+    
+    logger.info(f"2FA disabled for user: {current_user.email}")
+    
+    return {"success": True, "message": "2FA disabled successfully"}
+
+@api_router.post("/auth/2fa/verify")
+@limiter.limit("15/minute")
+async def verify_2fa_token(
+    request: Request,
+    verify_request: TwoFactorVerifyRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Verify a 2FA token (for testing purposes)
+    """
+    user_data = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    
+    if not user_data.get("two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA is not enabled")
+    
+    secret = user_data.get("two_factor_secret")
+    if TwoFactorAuth.verify_token(secret, verify_request.token):
+        return {"valid": True, "message": "Token is valid"}
+    else:
+        return {"valid": False, "message": "Token is invalid"}
+
+@api_router.get("/auth/2fa/backup-codes")
+@limiter.limit("5/hour")
+async def regenerate_backup_codes(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Regenerate backup codes (requires 2FA to be enabled)
+    """
+    user_data = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    
+    if not user_data.get("two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA is not enabled")
+    
+    # Generate new backup codes
+    backup_codes = TwoFactorAuth.generate_backup_codes(10)
+    hashed_codes = [TwoFactorAuth.hash_backup_code(code) for code in backup_codes]
+    
+    # Update database
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"backup_codes": hashed_codes}}
+    )
+    
+    ip_address = get_client_ip(request)
+    await audit_logger.log(current_user.id, "2fa_backup_codes_regenerated", "auth", {}, ip_address)
+    
+    logger.info(f"Backup codes regenerated for user: {current_user.email}")
+    
+    return {"backup_codes": backup_codes}
+
+@api_router.get("/auth/2fa/status")
+async def get_2fa_status(current_user: User = Depends(get_current_user)):
+    """
+    Get 2FA status for current user
+    """
+    user_data = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    
+    return {
+        "enabled": user_data.get("two_factor_enabled", False),
+        "has_trusted_devices": len(user_data.get("trusted_devices", [])) > 0,
+        "trusted_device_count": len(user_data.get("trusted_devices", []))
+    }
+
+@api_router.delete("/auth/2fa/trusted-devices")
+async def clear_trusted_devices(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Clear all trusted devices
+    """
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"trusted_devices": []}}
+    )
+    
+    ip_address = get_client_ip(request)
+    await audit_logger.log(current_user.id, "trusted_devices_cleared", "auth", {}, ip_address)
+    
+    logger.info(f"Trusted devices cleared for user: {current_user.email}")
+    
+    return {"success": True, "message": "All trusted devices cleared"}
+
 # Stats endpoint
 @api_router.get("/stats")
 @limiter.limit("30/minute")
