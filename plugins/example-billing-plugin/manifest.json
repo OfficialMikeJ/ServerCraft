@@ -1,0 +1,49 @@
+{
+  "id": "servercraft-billing",
+  "name": "Server Billing Plugin",
+  "version": "1.0.0",
+  "description": "Add billing functionality to charge for game servers with flexible pricing options",
+  "author": "ServerCraft Team",
+  "servercraft_version": "1.0.0",
+  "permissions": [
+    "servers:read",
+    "servers:write",
+    "users:read"
+  ],
+  "routes": [
+    {
+      "path": "/billing/plans",
+      "method": "GET",
+      "handler": "main.get_billing_plans"
+    },
+    {
+      "path": "/billing/plans",
+      "method": "POST",
+      "handler": "main.create_billing_plan"
+    },
+    {
+      "path": "/billing/subscriptions",
+      "method": "GET",
+      "handler": "main.get_subscriptions"
+    },
+    {
+      "path": "/billing/subscribe",
+      "method": "POST",
+      "handler": "main.create_subscription"
+    }
+  ],
+  "ui": {
+    "enabled": true,
+    "tab_name": "Billing",
+    "icon": "dollar-sign",
+    "route": "/billing"
+  },
+  "settings": {
+    "configurable": true,
+    "schema": {
+      "currency": {"type": "string", "default": "USD"},
+      "payment_gateway": {"type": "string", "default": "stripe"},
+      "tax_rate": {"type": "number", "default": 0}
+    }
+  }
+}
