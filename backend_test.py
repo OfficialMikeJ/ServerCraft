@@ -346,14 +346,6 @@ class ServerCraftTester:
         """Test 5: Plugin enable/disable/delete operations"""
         print("\n=== Testing Plugin Management Operations ===")
         
-        if not self.admin_token:
-            self.log_result(
-                "Plugin Management",
-                False,
-                "Cannot test - no admin token available"
-            )
-            return
-        
         if not hasattr(self, 'uploaded_plugin_id') or not self.uploaded_plugin_id:
             self.log_result(
                 "Plugin Management",
@@ -362,7 +354,12 @@ class ServerCraftTester:
             )
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Plugin Management", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
         plugin_id = self.uploaded_plugin_id
         
         # Test enable plugin
