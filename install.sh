@@ -237,25 +237,25 @@ setup_ssl() {
             warning "SSL certificate generation failed. You can run 'sudo certbot certonly --standalone -d $DOMAIN_NAME' manually later."
         fi
     else
-        info "Dynamic IP detected. Configuring Let's Encrypt with Dynamic DNS..."
+        info "Dynamic IP detected. Let's Encrypt setup with Dynamic DNS..."
         echo ""
         echo "╔══════════════════════════════════════════════════════════╗"
-        echo "║     Let's Encrypt Setup for Dynamic IP                   ║"
+        echo "║     Let's Encrypt SSL for Dynamic IP                     ║"
         echo "╚══════════════════════════════════════════════════════════╝"
         echo ""
-        echo "Choose your Dynamic DNS provider for Let's Encrypt SSL:"
+        echo "Choose your Dynamic DNS provider for Let's Encrypt:"
         echo ""
-        echo "1. DuckDNS (Free, Easy Setup)"
-        echo "   - Free subdomain (yourname.duckdns.org)"
-        echo "   - Automatic IP updates"
-        echo "   - Let's Encrypt SSL support"
+        echo "1. DuckDNS (Free & Easy)"
+        echo "   • Free subdomain (yourname.duckdns.org)"
+        echo "   • Automatic IP updates every 5 minutes"
+        echo "   • Let's Encrypt SSL certificate"
         echo ""
-        echo "2. Cloudflare (Free with API)"
-        echo "   - Use your own domain"
-        echo "   - Automatic IP updates via API"
-        echo "   - Free SSL with Cloudflare proxy"
+        echo "2. Cloudflare (Your own domain)"
+        echo "   • Use your existing domain"
+        echo "   • API-based IP updates"
+        echo "   • Let's Encrypt + Cloudflare SSL"
         echo ""
-        echo "3. Skip SSL Setup (Configure manually later)"
+        echo "3. Skip (Configure manually later)"
         echo ""
         
         if [ -t 0 ]; then
@@ -273,13 +273,188 @@ setup_ssl() {
                 setup_cloudflare
                 ;;
             3)
-                warning "SSL setup skipped. You can configure it manually later."
-                info "See: https://letsencrypt.org/docs/ for manual setup"
+                warning "SSL setup skipped. Configure manually later."
+                info "See: https://letsencrypt.org/docs/"
                 ;;
             *)
                 warning "Invalid choice. Skipping SSL setup."
                 ;;
         esac
+    fi
+}
+
+# Setup DuckDNS with Let's Encrypt
+setup_duckdns() {
+    log "Setting up DuckDNS with Let's Encrypt..."
+    
+    echo ""
+    echo "═══════════════════════════════════════════════════"
+    info "DuckDNS Setup Instructions"
+    echo "═══════════════════════════════════════════════════"
+    echo "1. Go to: https://www.duckdns.org"
+    echo "2. Sign in with any account (Google, GitHub, etc.)"
+    echo "3. Create a subdomain (e.g., 'myserver')"
+    echo "4. Copy your token from the top of the page"
+    echo ""
+    
+    if [ -t 0 ]; then
+        read -p "Enter your DuckDNS subdomain (without .duckdns.org): " DUCK_SUBDOMAIN
+        read -p "Enter your DuckDNS token: " DUCK_TOKEN
+    else
+        error "Non-interactive mode requires DUCK_SUBDOMAIN and DUCK_TOKEN variables"
+    fi
+    
+    # Validate input
+    if [ -z "$DUCK_SUBDOMAIN" ] || [ -z "$DUCK_TOKEN" ]; then
+        error "DuckDNS subdomain and token are required!"
+    fi
+    
+    # Create DuckDNS update script
+    mkdir -p /root/duckdns
+    cat > /root/duckdns/duck.sh << EOF
+#!/bin/bash
+echo url="https://www.duckdns.org/update?domains=${DUCK_SUBDOMAIN}&token=${DUCK_TOKEN}&ip=" | curl -k -o /root/duckdns/duck.log -K -
+EOF
+    
+    chmod +x /root/duckdns/duck.sh
+    
+    # Test DuckDNS connection
+    log "Testing DuckDNS connection..."
+    /root/duckdns/duck.sh
+    sleep 3
+    
+    if grep -q "OK" /root/duckdns/duck.log 2>/dev/null; then
+        log "✓ DuckDNS configured successfully!"
+    else
+        error "✗ DuckDNS test failed! Check subdomain and token. Log: $(cat /root/duckdns/duck.log 2>/dev/null || echo 'No log file')"
+    fi
+    
+    # Add to crontab for IP updates every 5 minutes
+    (crontab -l 2>/dev/null | grep -v "duckdns"; echo "*/5 * * * * /root/duckdns/duck.sh >/dev/null 2>&1") | crontab -
+    log "✓ DuckDNS auto-update scheduled (every 5 minutes)"
+    
+    # Update domain to DuckDNS
+    FULL_DOMAIN="${DUCK_SUBDOMAIN}.duckdns.org"
+    log "Your domain: ${FULL_DOMAIN}"
+    
+    # Update environment files
+    sed -i "s|CORS_ORIGINS=.*|CORS_ORIGINS=https://${FULL_DOMAIN}|g" "$SERVERCRAFT_DIR/backend/.env"
+    sed -i "s|REACT_APP_BACKEND_URL=.*|REACT_APP_BACKEND_URL=https://${FULL_DOMAIN}|g" "$SERVERCRAFT_DIR/frontend/.env"
+    
+    # Wait for DNS propagation
+    log "Waiting for DNS propagation (30 seconds)..."
+    sleep 30
+    
+    # Obtain Let's Encrypt certificate
+    log "Obtaining Let's Encrypt SSL certificate for ${FULL_DOMAIN}..."
+    certbot certonly --standalone \
+        -d "${FULL_DOMAIN}" \
+        --non-interactive \
+        --agree-tos \
+        --email "admin@${FULL_DOMAIN}" \
+        --preferred-challenges http \
+        >> "$LOG_FILE" 2>&1
+    
+    if [ $? -eq 0 ]; then
+        log "✓ Let's Encrypt SSL certificate obtained!"
+        
+        # Create renewal hook to update DuckDNS before renewal
+        mkdir -p /etc/letsencrypt/renewal-hooks/pre
+        cat > /etc/letsencrypt/renewal-hooks/pre/duckdns-update.sh << 'EOFHOOK'
+#!/bin/bash
+# Update DuckDNS IP before SSL renewal
+/root/duckdns/duck.sh
+sleep 10
+EOFHOOK
+        chmod +x /etc/letsencrypt/renewal-hooks/pre/duckdns-update.sh
+        
+        # Add certbot renewal (runs twice daily)
+        (crontab -l 2>/dev/null | grep -v "certbot renew"; echo "0 0,12 * * * certbot renew --quiet") | crontab -
+        
+        log "✓ SSL auto-renewal configured (checks twice daily)"
+        log "✓ DuckDNS IP update before each renewal configured"
+        
+        # Update DOMAIN_NAME for final summary
+        DOMAIN_NAME="${FULL_DOMAIN}"
+    else
+        warning "✗ Let's Encrypt certificate failed. Check $LOG_FILE"
+        warning "Retry with: sudo certbot certonly --standalone -d ${FULL_DOMAIN}"
+    fi
+}
+
+# Setup Cloudflare with Let's Encrypt
+setup_cloudflare() {
+    log "Setting up Cloudflare with Let's Encrypt..."
+    
+    echo ""
+    echo "═══════════════════════════════════════════════════"
+    info "Cloudflare Setup Instructions"
+    echo "═══════════════════════════════════════════════════"
+    echo "1. Add your domain to Cloudflare (free)"
+    echo "2. Update nameservers at your domain registrar"
+    echo "3. Get API Key: My Profile → API Tokens → Global API Key"
+    echo "4. Get Zone ID: Dashboard → Select domain → Zone ID"
+    echo ""
+    
+    if [ -t 0 ]; then
+        read -p "Enter your Cloudflare email: " CF_EMAIL
+        read -p "Enter your Global API Key: " CF_API_KEY
+        read -p "Enter your Zone ID: " CF_ZONE_ID
+        read -p "Enter your domain (e.g., panel.example.com): " CF_DOMAIN
+    else
+        error "Non-interactive mode requires CF_EMAIL, CF_API_KEY, CF_ZONE_ID, CF_DOMAIN variables"
+    fi
+    
+    # Validate input
+    if [ -z "$CF_EMAIL" ] || [ -z "$CF_API_KEY" ] || [ -z "$CF_ZONE_ID" ] || [ -z "$CF_DOMAIN" ]; then
+        error "All Cloudflare credentials are required!"
+    fi
+    
+    # Install Cloudflare DNS plugin
+    log "Installing Cloudflare DNS plugin..."
+    if [ "$PACKAGE_MANAGER" = "apt" ]; then
+        apt install -y python3-certbot-dns-cloudflare >> "$LOG_FILE" 2>&1
+    else
+        yum install -y python3-certbot-dns-cloudflare >> "$LOG_FILE" 2>&1
+    fi
+    
+    # Create Cloudflare credentials
+    mkdir -p /root/.secrets
+    cat > /root/.secrets/cloudflare.ini << EOF
+dns_cloudflare_email = ${CF_EMAIL}
+dns_cloudflare_api_key = ${CF_API_KEY}
+EOF
+    chmod 600 /root/.secrets/cloudflare.ini
+    log "✓ Cloudflare credentials saved"
+    
+    # Update environment files
+    sed -i "s|CORS_ORIGINS=.*|CORS_ORIGINS=https://${CF_DOMAIN}|g" "$SERVERCRAFT_DIR/backend/.env"
+    sed -i "s|REACT_APP_BACKEND_URL=.*|REACT_APP_BACKEND_URL=https://${CF_DOMAIN}|g" "$SERVERCRAFT_DIR/frontend/.env"
+    
+    # Obtain Let's Encrypt certificate via Cloudflare DNS
+    log "Obtaining Let's Encrypt SSL via Cloudflare DNS..."
+    certbot certonly --dns-cloudflare \
+        --dns-cloudflare-credentials /root/.secrets/cloudflare.ini \
+        -d "$CF_DOMAIN" \
+        --non-interactive \
+        --agree-tos \
+        --email "$CF_EMAIL" \
+        >> "$LOG_FILE" 2>&1
+    
+    if [ $? -eq 0 ]; then
+        log "✓ Let's Encrypt SSL certificate obtained!"
+        
+        # Setup auto-renewal
+        (crontab -l 2>/dev/null | grep -v "certbot renew"; echo "0 0,12 * * * certbot renew --quiet") | crontab -
+        
+        log "✓ SSL auto-renewal configured (checks twice daily)"
+        info "Tip: Enable Cloudflare proxy (orange cloud) for additional DDoS protection"
+        
+        # Update DOMAIN_NAME for final summary
+        DOMAIN_NAME="${CF_DOMAIN}"
+    else
+        warning "✗ Let's Encrypt certificate failed. Check $LOG_FILE"
+        info "Alternative: Enable Cloudflare proxy for automatic SSL (no certbot needed)"
     fi
 }
 
