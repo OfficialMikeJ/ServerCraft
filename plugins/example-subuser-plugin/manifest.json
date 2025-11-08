@@ -1,0 +1,59 @@
+{
+  "id": "servercraft-enhanced-subuser",
+  "name": "Enhanced Sub-User Management",
+  "version": "1.0.0",
+  "description": "Advanced sub-user management with granular permissions, suspensions, bans, and IP blocking",
+  "author": "ServerCraft Team",
+  "servercraft_version": "1.0.0",
+  "permissions": [
+    "users:read",
+    "users:write",
+    "servers:read"
+  ],
+  "routes": [
+    {
+      "path": "/subusers",
+      "method": "GET",
+      "handler": "main.get_subusers"
+    },
+    {
+      "path": "/subusers",
+      "method": "POST",
+      "handler": "main.create_subuser"
+    },
+    {
+      "path": "/subusers/{user_id}/suspend",
+      "method": "PUT",
+      "handler": "main.suspend_subuser"
+    },
+    {
+      "path": "/subusers/{user_id}/ban",
+      "method": "PUT",
+      "handler": "main.ban_subuser"
+    },
+    {
+      "path": "/subusers/{user_id}/ip-block",
+      "method": "POST",
+      "handler": "main.add_ip_block"
+    },
+    {
+      "path": "/subusers/{user_id}/permissions",
+      "method": "PUT",
+      "handler": "main.update_permissions"
+    }
+  ],
+  "ui": {
+    "enabled": true,
+    "tab_name": "Sub-Users",
+    "icon": "users",
+    "route": "/enhanced-subusers"
+  },
+  "settings": {
+    "configurable": true,
+    "schema": {
+      "max_subusers_per_admin": {"type": "number", "default": 50},
+      "allow_subuser_file_upload": {"type": "boolean", "default": false},
+      "ban_duration_days": {"type": "number", "default": 30}
+    }
+  }
+}
