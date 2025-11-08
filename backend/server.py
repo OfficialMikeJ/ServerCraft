@@ -960,6 +960,293 @@ async def delete_plugin(
         logger.error(f"Failed to delete plugin: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete plugin")
 
+# ============================================
+# Backup & Disaster Recovery Endpoints
+# ============================================
+
+# Initialize backup manager
+backup_manager = BackupManager(backup_dir="/app/backups")
+
+@api_router.post("/backups/create", response_model=BackupMetadata)
+@limiter.limit("5/hour")
+async def create_backup(
+    request: Request,
+    backup_request: CreateBackupRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create a manual backup (Admin only)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        backup_id = f"backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        
+        # Prepare file directories for backup
+        file_dirs = backup_request.file_dirs if backup_request.include_files else []
+        
+        # Create backup
+        metadata = backup_manager.create_full_backup(
+            backup_id=backup_id,
+            db_name=os.environ.get('DB_NAME', 'test_database'),
+            file_dirs=file_dirs,
+            password=backup_request.password,
+            metadata={
+                "created_by": current_user.id,
+                "description": backup_request.description or "Manual backup",
+                "include_database": backup_request.include_database,
+                "include_files": backup_request.include_files
+            }
+        )
+        
+        # Store metadata in database
+        await db.backups.insert_one(metadata)
+        
+        # Log action
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "create_backup",
+            "backup",
+            {"backup_id": backup_id, "size": metadata["file_size"]},
+            ip_address
+        )
+        
+        logger.info(f"Backup created: {backup_id} by {current_user.email}")
+        
+        return BackupMetadata(**metadata)
+        
+    except Exception as e:
+        logger.error(f"Failed to create backup: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create backup: {str(e)}")
+
+@api_router.get("/backups", response_model=List[BackupMetadata])
+async def list_backups(current_user: User = Depends(get_current_user)):
+    """
+    List all available backups
+    """
+    try:
+        backups = await db.backups.find({}, {"_id": 0}).sort("timestamp", -1).to_list(length=None)
+        return [BackupMetadata(**backup) for backup in backups]
+    except Exception as e:
+        logger.error(f"Failed to list backups: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list backups")
+
+@api_router.get("/backups/{backup_id}", response_model=BackupMetadata)
+async def get_backup(
+    backup_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get backup metadata
+    """
+    try:
+        backup = await db.backups.find_one({"id": backup_id}, {"_id": 0})
+        if not backup:
+            raise HTTPException(status_code=404, detail="Backup not found")
+        
+        return BackupMetadata(**backup)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get backup: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get backup")
+
+@api_router.post("/backups/{backup_id}/restore")
+async def restore_backup(
+    backup_id: str,
+    request: Request,
+    restore_request: RestoreBackupRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Restore a backup (Admin only)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Get backup metadata
+        backup = await db.backups.find_one({"id": backup_id}, {"_id": 0})
+        if not backup:
+            raise HTTPException(status_code=404, detail="Backup not found")
+        
+        # Restore backup
+        success = backup_manager.restore_backup(
+            backup_file=Path(backup["file_path"]),
+            password=restore_request.password,
+            salt_b64=backup["salt"],
+            db_name=os.environ.get('DB_NAME', 'test_database'),
+            restore_database=restore_request.restore_database,
+            restore_files=restore_request.restore_files
+        )
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Backup restoration failed")
+        
+        # Log action
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "restore_backup",
+            "backup",
+            {"backup_id": backup_id},
+            ip_address
+        )
+        
+        logger.info(f"Backup restored: {backup_id} by {current_user.email}")
+        
+        return {"success": True, "message": "Backup restored successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to restore backup: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to restore backup: {str(e)}")
+
+@api_router.delete("/backups/{backup_id}")
+async def delete_backup(
+    backup_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a backup (Admin only)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Delete from database
+        backup = await db.backups.find_one({"id": backup_id}, {"_id": 0})
+        if not backup:
+            raise HTTPException(status_code=404, detail="Backup not found")
+        
+        # Delete backup file
+        success = backup_manager.delete_backup(backup_id)
+        
+        if success:
+            # Remove from database
+            await db.backups.delete_one({"id": backup_id})
+            
+            # Log action
+            ip_address = get_client_ip(request)
+            await audit_logger.log(
+                current_user.id,
+                "delete_backup",
+                "backup",
+                {"backup_id": backup_id},
+                ip_address
+            )
+            
+            logger.info(f"Backup deleted: {backup_id}")
+            return {"success": True, "message": "Backup deleted successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete backup file")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete backup: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete backup: {str(e)}")
+
+@api_router.post("/backups/{backup_id}/verify")
+async def verify_backup(
+    backup_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Verify backup file integrity
+    """
+    try:
+        backup = await db.backups.find_one({"id": backup_id}, {"_id": 0})
+        if not backup:
+            raise HTTPException(status_code=404, detail="Backup not found")
+        
+        # Note: We can't verify encrypted files without decryption
+        # Just check if file exists and size matches
+        backup_file = Path(backup["file_path"])
+        if not backup_file.exists():
+            return {"valid": False, "message": "Backup file not found"}
+        
+        current_size = backup_file.stat().st_size
+        if current_size != backup["file_size"]:
+            return {"valid": False, "message": "Backup file size mismatch"}
+        
+        return {"valid": True, "message": "Backup file exists and size matches"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to verify backup: {e}")
+        raise HTTPException(status_code=500, detail="Failed to verify backup")
+
+@api_router.post("/backups/config")
+async def configure_backup_settings(
+    request: Request,
+    config_request: BackupConfigRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Configure backup settings (Admin only)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        config = {
+            "schedule": config_request.schedule,
+            "retention_count": config_request.retention_count,
+            "auto_backup_enabled": config_request.auto_backup_enabled,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user.id
+        }
+        
+        # Upsert config
+        await db.backup_config.update_one(
+            {},
+            {"$set": config},
+            upsert=True
+        )
+        
+        # Log action
+        ip_address = get_client_ip(request)
+        await audit_logger.log(
+            current_user.id,
+            "configure_backup",
+            "backup",
+            {"schedule": config_request.schedule},
+            ip_address
+        )
+        
+        logger.info(f"Backup configuration updated by {current_user.email}")
+        
+        return {"success": True, "message": "Backup configuration updated"}
+        
+    except Exception as e:
+        logger.error(f"Failed to configure backup: {e}")
+        raise HTTPException(status_code=500, detail="Failed to configure backup")
+
+@api_router.get("/backups/config")
+async def get_backup_config(current_user: User = Depends(get_current_user)):
+    """
+    Get backup configuration
+    """
+    try:
+        config = await db.backup_config.find_one({}, {"_id": 0})
+        if not config:
+            # Return default config
+            return {
+                "schedule": "daily",
+                "retention_count": 10,
+                "auto_backup_enabled": False
+            }
+        return config
+    except Exception as e:
+        logger.error(f"Failed to get backup config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get backup config")
+
 # Include router
 app.include_router(api_router)
 
