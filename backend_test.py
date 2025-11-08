@@ -23,6 +23,10 @@ class ServerCraftTester:
         self.session = requests.Session()
         self.admin_token = None
         self.test_results = []
+        self.admin_credentials = {
+            "email": "testadmin@servercraft.com",
+            "password": "testpassword123"
+        }
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
