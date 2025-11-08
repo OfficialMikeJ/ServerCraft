@@ -120,6 +120,8 @@ class ServerCraftTester:
                     data = response.json()
                     if "access_token" in data:
                         self.admin_token = data["access_token"]
+                        # Store successful credentials for future use
+                        self.admin_credentials = creds
                         login_success = True
                         self.log_result(
                             "Login Functionality",
