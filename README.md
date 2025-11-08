@@ -46,13 +46,31 @@ ServerCraft is a professional game server management panel that simplifies the d
 - 🔒 **Enterprise Security** - 22/24 security tests passed (91.7%)
 
 ### Theme System
-- 🎨 **4 Color Schemes**: Crimson Shadow (Red), Ocean Depths (Blue), Emerald Matrix (Green), Violet Nebula (Purple)
+- 🎨 **8 Color Schemes**: 
+  - Crimson Shadow (Black/Red/Gray)
+  - Ocean Depths (Black/Blue/Gray)
+  - Emerald Matrix (Black/Green/Gray)
+  - Violet Nebula (Black/Purple/Gray)
+  - Gray & White (Monochrome)
+  - Orange Inferno (Orange/Black/Gray)
+  - American Patriot (Red/White/Blue)
+  - Shadow Strike (Gray/Black/White)
 - 🖌️ **Dynamic Styling**: All buttons, text, borders, and UI elements change with theme
 - 💾 **Persistent**: Theme choice saved across sessions
 - 🎯 **Dual Selection**: Dropdown with Apply button or instant-apply visual cards
 - ✨ **Shadow Effects**: Professional depth with themed shadows on all buttons
 - 🌈 **Gradient Backgrounds**: Smooth color gradients matching theme
 - 🔄 **Smooth Transitions**: 0.3s animations when switching themes
+
+### Plugin System
+- 🔌 **Extensible Architecture**: Sandboxed plugin system for custom features
+- 📦 **Easy Installation**: Upload .zip files through admin panel
+- 🔒 **Security-First**: Admin-only uploads, file validation, size limits (10MB)
+- 🎯 **Example Plugins Included**:
+  - **Server Billing**: Add subscription management with per-slot/per-server pricing
+  - **Enhanced Sub-User**: Advanced permissions, suspensions, bans, IP blocking
+- 📚 **Developer Template**: Complete plugin template with documentation
+- 🛡️ **Sandboxed Execution**: Plugins use controlled API endpoints (no direct DB access)
 
 ### Security Features
 - ✅ Password strength validation
