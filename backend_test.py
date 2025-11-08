@@ -53,8 +53,14 @@ class ServerCraftTester:
                 data = response.json()
                 if "access_token" in data:
                     return data["access_token"]
+                elif data.get("requires_2fa"):
+                    # If 2FA is required, we need to handle it
+                    print(f"   Note: 2FA required for fresh token, using existing token")
+                    return self.admin_token
+            print(f"   Debug: Login response status {response.status_code}, data: {response.text[:100]}")
             return None
-        except Exception:
+        except Exception as e:
+            print(f"   Debug: Exception getting fresh token: {e}")
             return None
     
     def test_registration_removed(self):
