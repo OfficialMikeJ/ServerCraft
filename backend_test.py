@@ -537,11 +537,12 @@ class ServerCraftTester:
         """Test 2FA Setup Flow - Generate secret and QR code"""
         print("\n=== Testing 2FA Setup Flow ===")
         
-        if not self.admin_token:
-            self.log_result("2FA Setup Flow", False, "Cannot test - no admin token available")
+        token = self.admin_token or self.get_fresh_admin_token()
+        if not token:
+            self.log_result("2FA Setup Flow", False, "Cannot get admin token")
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         try:
             response = self.session.post(f"{self.base_url}/auth/2fa/setup", headers=headers)
