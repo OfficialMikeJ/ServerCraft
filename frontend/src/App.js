@@ -11,6 +11,7 @@ import NodesPage from "@/pages/NodesPage";
 import UsersPage from "@/pages/UsersPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ThemesPluginsPage from "@/pages/ThemesPluginsPage";
+import BackupPage from "@/pages/BackupPage";
 import { Toaster } from "@/components/ui/sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
