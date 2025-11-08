@@ -1122,6 +1122,578 @@ class ServerCraftTester:
         except Exception as e:
             self.log_result("2FA Security - Auth Required", False, f"Error testing auth requirement: {str(e)}")
 
+    # ============================================
+    # Backup & Disaster Recovery Tests
+    # ============================================
+    
+    def test_backup_creation(self):
+        """Test backup creation with encryption and compression"""
+        print("\n=== Testing Backup Creation ===")
+        
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Backup Creation", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
+        
+        # Test backup creation with valid data
+        try:
+            backup_data = {
+                "description": "Test backup for automated testing",
+                "password": "backup_test_password_123",
+                "include_database": True,
+                "include_files": True,
+                "file_dirs": ["/app/backend", "/app/frontend/src"]
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/backups/create",
+                headers=headers,
+                json=backup_data
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ['id', 'timestamp', 'file_path', 'file_size', 'checksum']
+                
+                if all(field in data for field in required_fields):
+                    self.created_backup_id = data['id']
+                    self.backup_password = backup_data['password']
+                    
+                    # Verify backup file exists
+                    import os
+                    if os.path.exists(data['file_path']):
+                        # Verify file is encrypted (should have .enc extension)
+                        if data['file_path'].endswith('.tar.gz.enc'):
+                            self.log_result(
+                                "Backup Creation",
+                                True,
+                                f"Backup created successfully - ID: {data['id']}, Size: {data['file_size']} bytes"
+                            )
+                        else:
+                            self.log_result(
+                                "Backup Creation",
+                                False,
+                                "Backup file not encrypted (missing .enc extension)",
+                                {"file_path": data['file_path']}
+                            )
+                    else:
+                        self.log_result(
+                            "Backup Creation",
+                            False,
+                            "Backup file not found on filesystem",
+                            {"expected_path": data['file_path']}
+                        )
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result(
+                        "Backup Creation",
+                        False,
+                        f"Missing required fields in response: {missing}",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Backup Creation",
+                    False,
+                    f"Backup creation failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Creation", False, f"Error testing backup creation: {str(e)}")
+        
+        # Test rate limiting (5/hour)
+        try:
+            rate_limit_responses = []
+            for i in range(7):  # Should trigger rate limit
+                response = self.session.post(
+                    f"{self.base_url}/backups/create",
+                    headers=headers,
+                    json=backup_data
+                )
+                rate_limit_responses.append(response.status_code)
+                time.sleep(0.1)
+            
+            if 429 in rate_limit_responses:
+                self.log_result(
+                    "Backup Creation - Rate Limiting",
+                    True,
+                    "Rate limiting enforced on backup creation (5/hour)"
+                )
+            else:
+                self.log_result(
+                    "Backup Creation - Rate Limiting",
+                    False,
+                    "Rate limiting not working on backup creation",
+                    {"responses": rate_limit_responses}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Creation - Rate Limiting", False, f"Error testing rate limiting: {str(e)}")
+    
+    def test_backup_list(self):
+        """Test listing backups"""
+        print("\n=== Testing Backup List ===")
+        
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Backup List", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
+        
+        try:
+            response = self.session.get(f"{self.base_url}/backups", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    # Check if our created backup is in the list
+                    if hasattr(self, 'created_backup_id'):
+                        backup_found = any(backup.get('id') == self.created_backup_id for backup in data)
+                        if backup_found:
+                            self.log_result(
+                                "Backup List",
+                                True,
+                                f"Backup list working - found {len(data)} backups including created backup"
+                            )
+                        else:
+                            self.log_result(
+                                "Backup List",
+                                False,
+                                f"Created backup not found in list (found {len(data)} backups)"
+                            )
+                    else:
+                        self.log_result(
+                            "Backup List",
+                            True,
+                            f"Backup list working - returned {len(data)} backups"
+                        )
+                else:
+                    self.log_result(
+                        "Backup List",
+                        False,
+                        "Backup list returned non-array response",
+                        {"response_type": type(data).__name__}
+                    )
+            else:
+                self.log_result(
+                    "Backup List",
+                    False,
+                    f"Backup list failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup List", False, f"Error testing backup list: {str(e)}")
+    
+    def test_backup_details(self):
+        """Test getting backup details"""
+        print("\n=== Testing Backup Details ===")
+        
+        if not hasattr(self, 'created_backup_id'):
+            self.log_result("Backup Details", False, "Cannot test - no backup created")
+            return
+        
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Backup Details", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
+        
+        # Test valid backup ID
+        try:
+            response = self.session.get(
+                f"{self.base_url}/backups/{self.created_backup_id}",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ['id', 'timestamp', 'file_path', 'file_size', 'checksum']
+                
+                if all(field in data for field in required_fields):
+                    self.log_result(
+                        "Backup Details - Valid ID",
+                        True,
+                        f"Backup details retrieved successfully for ID: {data['id']}"
+                    )
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result(
+                        "Backup Details - Valid ID",
+                        False,
+                        f"Missing required fields: {missing}",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Backup Details - Valid ID",
+                    False,
+                    f"Backup details failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Details - Valid ID", False, f"Error testing backup details: {str(e)}")
+        
+        # Test invalid backup ID
+        try:
+            response = self.session.get(
+                f"{self.base_url}/backups/invalid-backup-id-12345",
+                headers=headers
+            )
+            
+            if response.status_code == 404:
+                self.log_result(
+                    "Backup Details - Invalid ID",
+                    True,
+                    "Invalid backup ID properly returns 404"
+                )
+            else:
+                self.log_result(
+                    "Backup Details - Invalid ID",
+                    False,
+                    f"Invalid backup ID should return 404 (got HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Details - Invalid ID", False, f"Error testing invalid backup ID: {str(e)}")
+    
+    def test_backup_verification(self):
+        """Test backup file verification"""
+        print("\n=== Testing Backup Verification ===")
+        
+        if not hasattr(self, 'created_backup_id'):
+            self.log_result("Backup Verification", False, "Cannot test - no backup created")
+            return
+        
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Backup Verification", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
+        
+        # Test verification of existing backup
+        try:
+            response = self.session.post(
+                f"{self.base_url}/backups/{self.created_backup_id}/verify",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("valid"):
+                    self.log_result(
+                        "Backup Verification - Valid",
+                        True,
+                        f"Backup verification successful: {data.get('message', 'File exists and size matches')}"
+                    )
+                else:
+                    self.log_result(
+                        "Backup Verification - Valid",
+                        False,
+                        f"Backup verification failed: {data.get('message', 'Unknown error')}"
+                    )
+            else:
+                self.log_result(
+                    "Backup Verification - Valid",
+                    False,
+                    f"Backup verification failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Verification - Valid", False, f"Error testing backup verification: {str(e)}")
+        
+        # Test verification of non-existent backup
+        try:
+            response = self.session.post(
+                f"{self.base_url}/backups/non-existent-backup-id/verify",
+                headers=headers
+            )
+            
+            if response.status_code == 404:
+                self.log_result(
+                    "Backup Verification - Invalid ID",
+                    True,
+                    "Non-existent backup properly returns 404"
+                )
+            else:
+                self.log_result(
+                    "Backup Verification - Invalid ID",
+                    False,
+                    f"Non-existent backup should return 404 (got HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Verification - Invalid ID", False, f"Error testing invalid backup verification: {str(e)}")
+    
+    def test_backup_configuration(self):
+        """Test backup configuration endpoints"""
+        print("\n=== Testing Backup Configuration ===")
+        
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Backup Configuration", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
+        
+        # Test setting backup configuration
+        try:
+            config_data = {
+                "schedule": "daily",
+                "retention_count": 7,
+                "auto_backup_enabled": True
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/backups/config",
+                headers=headers,
+                json=config_data
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    self.log_result(
+                        "Backup Configuration - Set",
+                        True,
+                        "Backup configuration set successfully"
+                    )
+                else:
+                    self.log_result(
+                        "Backup Configuration - Set",
+                        False,
+                        "Configuration response indicates failure",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Backup Configuration - Set",
+                    False,
+                    f"Backup configuration failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Configuration - Set", False, f"Error testing backup configuration: {str(e)}")
+        
+        # Test getting backup configuration
+        try:
+            response = self.session.get(f"{self.base_url}/backups/config", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                expected_fields = ['schedule', 'retention_count', 'auto_backup_enabled']
+                
+                if all(field in data for field in expected_fields):
+                    self.log_result(
+                        "Backup Configuration - Get",
+                        True,
+                        f"Backup configuration retrieved: schedule={data['schedule']}, retention={data['retention_count']}"
+                    )
+                else:
+                    missing = [f for f in expected_fields if f not in data]
+                    self.log_result(
+                        "Backup Configuration - Get",
+                        False,
+                        f"Missing configuration fields: {missing}",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Backup Configuration - Get",
+                    False,
+                    f"Get backup configuration failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Configuration - Get", False, f"Error testing get backup configuration: {str(e)}")
+    
+    def test_backup_delete(self):
+        """Test backup deletion"""
+        print("\n=== Testing Backup Deletion ===")
+        
+        if not hasattr(self, 'created_backup_id'):
+            self.log_result("Backup Deletion", False, "Cannot test - no backup created")
+            return
+        
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Backup Deletion", False, "Cannot get fresh admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {fresh_token}"}
+        
+        # Test deleting non-existent backup first
+        try:
+            response = self.session.delete(
+                f"{self.base_url}/backups/non-existent-backup-id",
+                headers=headers
+            )
+            
+            if response.status_code == 404:
+                self.log_result(
+                    "Backup Deletion - Invalid ID",
+                    True,
+                    "Non-existent backup properly returns 404"
+                )
+            else:
+                self.log_result(
+                    "Backup Deletion - Invalid ID",
+                    False,
+                    f"Non-existent backup should return 404 (got HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Deletion - Invalid ID", False, f"Error testing invalid backup deletion: {str(e)}")
+        
+        # Test deleting existing backup
+        try:
+            response = self.session.delete(
+                f"{self.base_url}/backups/{self.created_backup_id}",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    self.log_result(
+                        "Backup Deletion - Valid ID",
+                        True,
+                        f"Backup deleted successfully: {self.created_backup_id}"
+                    )
+                    
+                    # Verify backup is no longer in list
+                    list_response = self.session.get(f"{self.base_url}/backups", headers=headers)
+                    if list_response.status_code == 200:
+                        backups = list_response.json()
+                        backup_still_exists = any(backup.get('id') == self.created_backup_id for backup in backups)
+                        if not backup_still_exists:
+                            self.log_result(
+                                "Backup Deletion - Verification",
+                                True,
+                                "Deleted backup no longer appears in backup list"
+                            )
+                        else:
+                            self.log_result(
+                                "Backup Deletion - Verification",
+                                False,
+                                "Deleted backup still appears in backup list"
+                            )
+                else:
+                    self.log_result(
+                        "Backup Deletion - Valid ID",
+                        False,
+                        "Deletion response indicates failure",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Backup Deletion - Valid ID",
+                    False,
+                    f"Backup deletion failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Deletion - Valid ID", False, f"Error testing backup deletion: {str(e)}")
+    
+    def test_backup_security(self):
+        """Test backup security measures"""
+        print("\n=== Testing Backup Security ===")
+        
+        # Test admin-only access
+        try:
+            # Test without authentication
+            response = self.session.get(f"{self.base_url}/backups")
+            
+            if response.status_code in [401, 403]:
+                self.log_result(
+                    "Backup Security - Auth Required",
+                    True,
+                    "Backup endpoints properly require authentication"
+                )
+            else:
+                self.log_result(
+                    "Backup Security - Auth Required",
+                    False,
+                    f"Backup endpoints accessible without auth (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Security - Auth Required", False, f"Error testing backup auth: {str(e)}")
+        
+        # Test with invalid token
+        try:
+            headers = {"Authorization": "Bearer invalid-token-12345"}
+            response = self.session.get(f"{self.base_url}/backups", headers=headers)
+            
+            if response.status_code in [401, 403]:
+                self.log_result(
+                    "Backup Security - Invalid Token",
+                    True,
+                    "Backup endpoints properly reject invalid tokens"
+                )
+            else:
+                self.log_result(
+                    "Backup Security - Invalid Token",
+                    False,
+                    f"Backup endpoints accept invalid token (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Security - Invalid Token", False, f"Error testing invalid token: {str(e)}")
+        
+        # Test audit logging (check if backup operations are logged)
+        try:
+            fresh_token = self.get_fresh_admin_token()
+            if fresh_token:
+                headers = {"Authorization": f"Bearer {fresh_token}"}
+                
+                # Check audit logs for backup operations
+                response = self.session.get(f"{self.base_url}/security/audit-logs?limit=50", headers=headers)
+                
+                if response.status_code == 200:
+                    logs = response.json()
+                    backup_logs = [log for log in logs if 'backup' in log.get('action', '').lower()]
+                    
+                    if backup_logs:
+                        self.log_result(
+                            "Backup Security - Audit Logging",
+                            True,
+                            f"Backup operations properly logged ({len(backup_logs)} backup-related log entries found)"
+                        )
+                    else:
+                        self.log_result(
+                            "Backup Security - Audit Logging",
+                            False,
+                            "No backup operations found in audit logs"
+                        )
+                else:
+                    self.log_result(
+                        "Backup Security - Audit Logging",
+                        False,
+                        f"Cannot access audit logs (HTTP {response.status_code})"
+                    )
+            else:
+                self.log_result("Backup Security - Audit Logging", False, "Cannot get fresh admin token")
+                
+        except Exception as e:
+            self.log_result("Backup Security - Audit Logging", False, f"Error testing audit logging: {str(e)}")
+
     def run_all_tests(self):
         """Run all tests in sequence"""
         print(f"🚀 Starting ServerCraft Backend Tests - 2FA Focus")
