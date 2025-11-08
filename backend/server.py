@@ -218,6 +218,7 @@ async def add_security_headers(request: Request, call_next):
 @limiter.limit("10/minute")
 async def login(request: Request, credentials: UserLogin):
     ip_address = get_client_ip(request)
+    user_agent = request.headers.get("User-Agent", "Unknown")
     
     # Check if account is locked
     is_locked = await account_security.is_account_locked(credentials.email)
@@ -234,19 +235,108 @@ async def login(request: Request, credentials: UserLogin):
     
     user = User(**{k: v for k, v in user_data.items() if k != "hashed_password"})
     
+    # Check if 2FA is enabled
+    if user_data.get("two_factor_enabled", False):
+        # Check if device is trusted
+        if credentials.device_token and user_data.get("trusted_devices"):
+            is_trusted = TrustedDevice.is_device_trusted(
+                credentials.device_token,
+                user_data.get("trusted_devices", [])
+            )
+            if is_trusted:
+                # Bypass 2FA for trusted device
+                access_token = create_access_token(data={"sub": user.id})
+                refresh_token = create_refresh_token(data={"sub": user.id})
+                
+                await session_manager.create_session(user.id, access_token, ip_address, user_agent)
+                await account_security.record_successful_login(user.email, ip_address, user_agent)
+                await audit_logger.log(user.id, "login", "user", {"email": user.email, "trusted_device": True}, ip_address)
+                
+                logger.info(f"User logged in via trusted device: {user.email}")
+                return Token(
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                    token_type="bearer",
+                    user=user,
+                    device_token=credentials.device_token
+                )
+        
+        # Verify 2FA token
+        if not credentials.totp_token:
+            # Return temp token for 2FA verification
+            temp_token = create_access_token(
+                data={"sub": user.id, "temp": True},
+                expires_delta=timedelta(minutes=5)
+            )
+            return Token(
+                access_token="",
+                refresh_token="",
+                token_type="bearer",
+                user=user,
+                requires_2fa=True,
+                temp_token=temp_token
+            )
+        
+        # Verify TOTP token
+        secret = user_data.get("two_factor_secret")
+        if not TwoFactorAuth.verify_token(secret, credentials.totp_token):
+            # Check if it's a backup code
+            backup_codes = user_data.get("backup_codes", [])
+            code_valid = False
+            
+            for i, hashed_code in enumerate(backup_codes):
+                if TwoFactorAuth.verify_backup_code(credentials.totp_token, hashed_code):
+                    # Remove used backup code
+                    backup_codes.pop(i)
+                    await db.users.update_one(
+                        {"id": user.id},
+                        {"$set": {"backup_codes": backup_codes}}
+                    )
+                    code_valid = True
+                    await audit_logger.log(user.id, "2fa_backup_used", "auth", {}, ip_address)
+                    break
+            
+            if not code_valid:
+                await account_security.record_failed_login(credentials.email, ip_address)
+                raise HTTPException(status_code=401, detail="Invalid 2FA token")
+    
     # Create tokens
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
     
+    # Handle "Remember this device"
+    device_token = None
+    if credentials.remember_device and user_data.get("two_factor_enabled", False):
+        device_token = TrustedDevice.generate_device_token()
+        trusted_device = {
+            "token": device_token,
+            "fingerprint": TrustedDevice.create_device_fingerprint(user_agent, ip_address),
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Add to trusted devices
+        await db.users.update_one(
+            {"id": user.id},
+            {"$push": {"trusted_devices": trusted_device}}
+        )
+        await audit_logger.log(user.id, "trusted_device_added", "auth", {"ip": ip_address}, ip_address)
+    
     # Create session
-    user_agent = request.headers.get("User-Agent", "Unknown")
     await session_manager.create_session(user.id, access_token, ip_address, user_agent)
     await account_security.record_successful_login(user.email, ip_address, user_agent)
     await audit_logger.log(user.id, "login", "user", {"email": user.email}, ip_address)
     
     logger.info(f"User logged in: {user.email}")
     
-    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer", user=user)
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=user,
+        device_token=device_token
+    )
 
 @api_router.post("/auth/refresh", response_model=Token)
 @limiter.limit("10/minute")
