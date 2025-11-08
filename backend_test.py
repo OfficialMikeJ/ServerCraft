@@ -200,15 +200,12 @@ class ServerCraftTester:
         """Test 4: POST /api/plugins/upload - Upload validation"""
         print("\n=== Testing Plugin Upload Validation ===")
         
-        if not self.admin_token:
-            self.log_result(
-                "Plugin Upload Validation",
-                False,
-                "Cannot test - no admin token available"
-            )
+        fresh_token = self.get_fresh_admin_token()
+        if not fresh_token:
+            self.log_result("Plugin Upload Validation", False, "Cannot get fresh admin token")
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        headers = {"Authorization": f"Bearer {fresh_token}"}
         
         # Test 4a: Upload non-zip file
         try:
