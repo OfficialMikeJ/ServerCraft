@@ -42,6 +42,21 @@ class ServerCraftTester:
         if details and not success:
             print(f"   Details: {details}")
     
+    def get_fresh_admin_token(self):
+        """Get a fresh admin token for authentication"""
+        try:
+            response = self.session.post(
+                f"{self.base_url}/auth/login",
+                json=self.admin_credentials
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if "access_token" in data:
+                    return data["access_token"]
+            return None
+        except Exception:
+            return None
+    
     def test_registration_removed(self):
         """Test 1: Verify registration endpoint is removed"""
         print("\n=== Testing Registration Endpoint Removal ===")
