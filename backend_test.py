@@ -521,15 +521,582 @@ class ServerCraftTester:
                 f"Error testing invalid token access: {str(e)}"
             )
     
+    def test_2fa_setup_flow(self):
+        """Test 2FA Setup Flow - Generate secret and QR code"""
+        print("\n=== Testing 2FA Setup Flow ===")
+        
+        if not self.admin_token:
+            self.log_result("2FA Setup Flow", False, "Cannot test - no admin token available")
+            return
+        
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        
+        try:
+            response = self.session.post(f"{self.base_url}/auth/2fa/setup", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ['secret', 'qr_code', 'backup_codes']
+                
+                if all(field in data for field in required_fields):
+                    # Validate secret format (base32)
+                    secret = data['secret']
+                    if re.match(r'^[A-Z2-7]+$', secret) and len(secret) >= 16:
+                        # Validate QR code format (base64 data URI)
+                        qr_code = data['qr_code']
+                        if qr_code.startswith('data:image/png;base64,'):
+                            # Validate backup codes (should be 10 codes)
+                            backup_codes = data['backup_codes']
+                            if len(backup_codes) == 10:
+                                # Store secret for later tests
+                                self.totp_secret = secret
+                                self.backup_codes = backup_codes
+                                self.log_result(
+                                    "2FA Setup Flow",
+                                    True,
+                                    f"2FA setup successful - secret, QR code, and {len(backup_codes)} backup codes generated"
+                                )
+                            else:
+                                self.log_result(
+                                    "2FA Setup Flow",
+                                    False,
+                                    f"Invalid backup codes count: {len(backup_codes)} (expected 10)"
+                                )
+                        else:
+                            self.log_result(
+                                "2FA Setup Flow",
+                                False,
+                                "Invalid QR code format (not base64 data URI)"
+                            )
+                    else:
+                        self.log_result(
+                            "2FA Setup Flow",
+                            False,
+                            "Invalid secret format (not valid base32)"
+                        )
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result(
+                        "2FA Setup Flow",
+                        False,
+                        f"Missing required fields: {missing}",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "2FA Setup Flow",
+                    False,
+                    f"2FA setup failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("2FA Setup Flow", False, f"Error testing 2FA setup: {str(e)}")
+    
+    def test_2fa_enable(self):
+        """Test 2FA Enable with TOTP verification"""
+        print("\n=== Testing 2FA Enable ===")
+        
+        if not self.admin_token:
+            self.log_result("2FA Enable", False, "Cannot test - no admin token available")
+            return
+        
+        if not hasattr(self, 'totp_secret'):
+            self.log_result("2FA Enable", False, "Cannot test - no TOTP secret from setup")
+            return
+        
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        
+        # Test with invalid token first
+        try:
+            invalid_data = {
+                "token": "123456",
+                "password": "testpassword123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/2fa/enable", headers=headers, json=invalid_data)
+            
+            if response.status_code == 401:
+                self.log_result(
+                    "2FA Enable - Invalid Token",
+                    True,
+                    "Invalid TOTP token properly rejected"
+                )
+            else:
+                self.log_result(
+                    "2FA Enable - Invalid Token",
+                    False,
+                    f"Invalid token not rejected (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+        except Exception as e:
+            self.log_result("2FA Enable - Invalid Token", False, f"Error testing invalid token: {str(e)}")
+        
+        # Test with valid token
+        try:
+            # Generate valid TOTP token
+            totp = pyotp.TOTP(self.totp_secret)
+            valid_token = totp.now()
+            
+            valid_data = {
+                "token": valid_token,
+                "password": "testpassword123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/2fa/enable", headers=headers, json=valid_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    self.twofa_enabled = True
+                    self.log_result(
+                        "2FA Enable - Valid Token",
+                        True,
+                        "2FA enabled successfully with valid TOTP token"
+                    )
+                else:
+                    self.log_result(
+                        "2FA Enable - Valid Token",
+                        False,
+                        "Enable response indicates failure",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "2FA Enable - Valid Token",
+                    False,
+                    f"2FA enable failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("2FA Enable - Valid Token", False, f"Error testing valid token: {str(e)}")
+    
+    def test_2fa_status(self):
+        """Test 2FA Status endpoint"""
+        print("\n=== Testing 2FA Status ===")
+        
+        if not self.admin_token:
+            self.log_result("2FA Status", False, "Cannot test - no admin token available")
+            return
+        
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        
+        try:
+            response = self.session.get(f"{self.base_url}/auth/2fa/status", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ['enabled', 'has_trusted_devices', 'trusted_device_count']
+                
+                if all(field in data for field in required_fields):
+                    enabled = data['enabled']
+                    expected_enabled = hasattr(self, 'twofa_enabled') and self.twofa_enabled
+                    
+                    if enabled == expected_enabled:
+                        self.log_result(
+                            "2FA Status",
+                            True,
+                            f"2FA status correct - enabled: {enabled}, trusted devices: {data['trusted_device_count']}"
+                        )
+                    else:
+                        self.log_result(
+                            "2FA Status",
+                            False,
+                            f"2FA status mismatch - expected enabled: {expected_enabled}, got: {enabled}"
+                        )
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result(
+                        "2FA Status",
+                        False,
+                        f"Missing required fields: {missing}",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "2FA Status",
+                    False,
+                    f"2FA status failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("2FA Status", False, f"Error testing 2FA status: {str(e)}")
+    
+    def test_login_with_2fa(self):
+        """Test Login Flow with 2FA"""
+        print("\n=== Testing Login with 2FA ===")
+        
+        if not hasattr(self, 'twofa_enabled') or not self.twofa_enabled:
+            self.log_result("Login with 2FA", False, "Cannot test - 2FA not enabled")
+            return
+        
+        # Test 1: Login with email + password only (should require 2FA)
+        try:
+            login_data = {
+                "email": "testadmin@servercraft.com",
+                "password": "testpassword123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/login", json=login_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("requires_2fa") and data.get("temp_token"):
+                    self.temp_token = data["temp_token"]
+                    self.log_result(
+                        "Login - 2FA Required",
+                        True,
+                        "Login correctly requires 2FA verification"
+                    )
+                else:
+                    self.log_result(
+                        "Login - 2FA Required",
+                        False,
+                        "Login should require 2FA but doesn't",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Login - 2FA Required",
+                    False,
+                    f"Login failed unexpectedly (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+        except Exception as e:
+            self.log_result("Login - 2FA Required", False, f"Error testing 2FA required: {str(e)}")
+        
+        # Test 2: Login with email + password + valid TOTP token
+        try:
+            totp = pyotp.TOTP(self.totp_secret)
+            valid_token = totp.now()
+            
+            login_data = {
+                "email": "testadmin@servercraft.com",
+                "password": "testpassword123",
+                "totp_token": valid_token
+            }
+            response = self.session.post(f"{self.base_url}/auth/login", json=login_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("access_token") and not data.get("requires_2fa"):
+                    self.log_result(
+                        "Login - 2FA Success",
+                        True,
+                        "Login successful with valid 2FA token"
+                    )
+                else:
+                    self.log_result(
+                        "Login - 2FA Success",
+                        False,
+                        "Login with 2FA token failed",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Login - 2FA Success",
+                    False,
+                    f"Login with 2FA failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+        except Exception as e:
+            self.log_result("Login - 2FA Success", False, f"Error testing 2FA login: {str(e)}")
+    
+    def test_backup_codes(self):
+        """Test Backup Codes functionality"""
+        print("\n=== Testing Backup Codes ===")
+        
+        if not self.admin_token:
+            self.log_result("Backup Codes", False, "Cannot test - no admin token available")
+            return
+        
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        
+        # Test backup code regeneration
+        try:
+            response = self.session.get(f"{self.base_url}/auth/2fa/backup-codes", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "backup_codes" in data and len(data["backup_codes"]) == 10:
+                    new_backup_codes = data["backup_codes"]
+                    self.log_result(
+                        "Backup Codes - Regeneration",
+                        True,
+                        f"Backup codes regenerated successfully ({len(new_backup_codes)} codes)"
+                    )
+                    
+                    # Test login with backup code
+                    if new_backup_codes:
+                        test_code = new_backup_codes[0]  # Use first backup code
+                        login_data = {
+                            "email": "testadmin@servercraft.com",
+                            "password": "testpassword123",
+                            "totp_token": test_code
+                        }
+                        
+                        login_response = self.session.post(f"{self.base_url}/auth/login", json=login_data)
+                        
+                        if login_response.status_code == 200:
+                            login_data_result = login_response.json()
+                            if login_data_result.get("access_token"):
+                                self.log_result(
+                                    "Backup Codes - Login",
+                                    True,
+                                    "Login successful with backup code"
+                                )
+                            else:
+                                self.log_result(
+                                    "Backup Codes - Login",
+                                    False,
+                                    "Login with backup code failed - no access token",
+                                    {"response": login_data_result}
+                                )
+                        else:
+                            self.log_result(
+                                "Backup Codes - Login",
+                                False,
+                                f"Login with backup code failed (HTTP {login_response.status_code})",
+                                {"response": login_response.text[:200]}
+                            )
+                else:
+                    self.log_result(
+                        "Backup Codes - Regeneration",
+                        False,
+                        "Invalid backup codes response",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Backup Codes - Regeneration",
+                    False,
+                    f"Backup codes regeneration failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Backup Codes", False, f"Error testing backup codes: {str(e)}")
+    
+    def test_trusted_devices(self):
+        """Test Trusted Devices functionality"""
+        print("\n=== Testing Trusted Devices ===")
+        
+        if not hasattr(self, 'twofa_enabled') or not self.twofa_enabled:
+            self.log_result("Trusted Devices", False, "Cannot test - 2FA not enabled")
+            return
+        
+        # Test login with remember_device=true
+        try:
+            totp = pyotp.TOTP(self.totp_secret)
+            valid_token = totp.now()
+            
+            login_data = {
+                "email": "testadmin@servercraft.com",
+                "password": "testpassword123",
+                "totp_token": valid_token,
+                "remember_device": True
+            }
+            response = self.session.post(f"{self.base_url}/auth/login", json=login_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("device_token"):
+                    self.device_token = data["device_token"]
+                    self.log_result(
+                        "Trusted Devices - Remember Device",
+                        True,
+                        "Device token generated for trusted device"
+                    )
+                    
+                    # Test subsequent login with device token (should bypass 2FA)
+                    time.sleep(1)  # Small delay to ensure different timestamp
+                    
+                    device_login_data = {
+                        "email": "testadmin@servercraft.com",
+                        "password": "testpassword123",
+                        "device_token": self.device_token
+                    }
+                    device_response = self.session.post(f"{self.base_url}/auth/login", json=device_login_data)
+                    
+                    if device_response.status_code == 200:
+                        device_data = device_response.json()
+                        if device_data.get("access_token") and not device_data.get("requires_2fa"):
+                            self.log_result(
+                                "Trusted Devices - Bypass 2FA",
+                                True,
+                                "Trusted device successfully bypassed 2FA"
+                            )
+                        else:
+                            self.log_result(
+                                "Trusted Devices - Bypass 2FA",
+                                False,
+                                "Trusted device did not bypass 2FA",
+                                {"response": device_data}
+                            )
+                    else:
+                        self.log_result(
+                            "Trusted Devices - Bypass 2FA",
+                            False,
+                            f"Trusted device login failed (HTTP {device_response.status_code})",
+                            {"response": device_response.text[:200]}
+                        )
+                else:
+                    self.log_result(
+                        "Trusted Devices - Remember Device",
+                        False,
+                        "No device token returned for remember device",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "Trusted Devices - Remember Device",
+                    False,
+                    f"Remember device login failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("Trusted Devices", False, f"Error testing trusted devices: {str(e)}")
+    
+    def test_2fa_disable(self):
+        """Test 2FA Disable functionality"""
+        print("\n=== Testing 2FA Disable ===")
+        
+        if not self.admin_token:
+            self.log_result("2FA Disable", False, "Cannot test - no admin token available")
+            return
+        
+        if not hasattr(self, 'twofa_enabled') or not self.twofa_enabled:
+            self.log_result("2FA Disable", False, "Cannot test - 2FA not enabled")
+            return
+        
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        
+        # Test disable with valid credentials
+        try:
+            totp = pyotp.TOTP(self.totp_secret)
+            valid_token = totp.now()
+            
+            disable_data = {
+                "password": "testpassword123",
+                "token": valid_token
+            }
+            response = self.session.post(f"{self.base_url}/auth/2fa/disable", headers=headers, json=disable_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    self.twofa_enabled = False
+                    self.log_result(
+                        "2FA Disable",
+                        True,
+                        "2FA disabled successfully"
+                    )
+                else:
+                    self.log_result(
+                        "2FA Disable",
+                        False,
+                        "Disable response indicates failure",
+                        {"response": data}
+                    )
+            else:
+                self.log_result(
+                    "2FA Disable",
+                    False,
+                    f"2FA disable failed (HTTP {response.status_code})",
+                    {"response": response.text[:200]}
+                )
+                
+        except Exception as e:
+            self.log_result("2FA Disable", False, f"Error testing 2FA disable: {str(e)}")
+    
+    def test_2fa_security(self):
+        """Test 2FA Security measures"""
+        print("\n=== Testing 2FA Security ===")
+        
+        # Test rate limiting on setup endpoint
+        try:
+            if self.admin_token:
+                headers = {"Authorization": f"Bearer {self.admin_token}"}
+                
+                # Make multiple rapid requests to test rate limiting
+                rate_limit_responses = []
+                for i in range(7):  # Limit is 5/hour, so 7 should trigger rate limit
+                    response = self.session.post(f"{self.base_url}/auth/2fa/setup", headers=headers)
+                    rate_limit_responses.append(response.status_code)
+                    time.sleep(0.1)  # Small delay between requests
+                
+                # Check if any requests were rate limited (429)
+                if 429 in rate_limit_responses:
+                    self.log_result(
+                        "2FA Security - Rate Limiting",
+                        True,
+                        "Rate limiting working on 2FA setup endpoint"
+                    )
+                else:
+                    self.log_result(
+                        "2FA Security - Rate Limiting",
+                        False,
+                        "Rate limiting not working on 2FA setup endpoint",
+                        {"responses": rate_limit_responses}
+                    )
+            else:
+                self.log_result("2FA Security - Rate Limiting", False, "Cannot test - no admin token")
+                
+        except Exception as e:
+            self.log_result("2FA Security - Rate Limiting", False, f"Error testing rate limiting: {str(e)}")
+        
+        # Test authentication requirement
+        try:
+            # Test 2FA endpoints without authentication
+            endpoints_to_test = [
+                "/auth/2fa/setup",
+                "/auth/2fa/status",
+                "/auth/2fa/backup-codes"
+            ]
+            
+            auth_required_count = 0
+            for endpoint in endpoints_to_test:
+                response = self.session.get(f"{self.base_url}{endpoint}")
+                if response.status_code in [401, 403]:
+                    auth_required_count += 1
+            
+            if auth_required_count == len(endpoints_to_test):
+                self.log_result(
+                    "2FA Security - Auth Required",
+                    True,
+                    "All 2FA endpoints properly require authentication"
+                )
+            else:
+                self.log_result(
+                    "2FA Security - Auth Required",
+                    False,
+                    f"Only {auth_required_count}/{len(endpoints_to_test)} endpoints require auth"
+                )
+                
+        except Exception as e:
+            self.log_result("2FA Security - Auth Required", False, f"Error testing auth requirement: {str(e)}")
+
     def run_all_tests(self):
         """Run all tests in sequence"""
-        print(f"🚀 Starting ServerCraft Backend Tests")
+        print(f"🚀 Starting ServerCraft Backend Tests - 2FA Focus")
         print(f"Backend URL: {self.base_url}")
         print("=" * 60)
         
-        # Run tests in order
+        # Run authentication tests first
         self.test_registration_removed()
         self.test_login_functionality()
+        
+        # Run comprehensive 2FA tests
+        self.test_2fa_setup_flow()
+        self.test_2fa_enable()
+        self.test_2fa_status()
+        self.test_login_with_2fa()
+        self.test_backup_codes()
+        self.test_trusted_devices()
+        self.test_2fa_disable()
+        self.test_2fa_security()
+        
+        # Run plugin tests
         self.test_plugin_list_endpoint()
         self.test_plugin_upload_validation()
         self.test_plugin_management()
