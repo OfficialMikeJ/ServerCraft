@@ -36,6 +36,9 @@ from security import (
 # Import 2FA module
 from two_factor import TwoFactorAuth, TrustedDevice
 
+# Import backup module
+from backup_manager import BackupManager
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
