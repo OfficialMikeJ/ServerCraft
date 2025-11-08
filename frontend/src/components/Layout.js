@@ -4,7 +4,7 @@ import { AuthContext } from "@/App";
 import { useTheme } from "@/themes/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Server, HardDrive, Users, Settings, LogOut, LayoutDashboard, Palette } from "lucide-react";
+import { Server, HardDrive, Users, Settings, LogOut, LayoutDashboard, Palette, Database } from "lucide-react";
 
 const Layout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
@@ -17,6 +17,7 @@ const Layout = ({ children }) => {
     { name: "Servers", path: "/servers", icon: Server, testId: "nav-servers" },
     { name: "Nodes", path: "/nodes", icon: HardDrive, testId: "nav-nodes" },
     { name: "Users", path: "/users", icon: Users, testId: "nav-users", adminOnly: true },
+    { name: "Backups", path: "/backups", icon: Database, testId: "nav-backups", adminOnly: true },
     { name: "Themes & Plugins", path: "/themes-plugins", icon: Palette, testId: "nav-themes-plugins", adminOnly: true, disabled: true },
     { name: "Settings", path: "/settings", icon: Settings, testId: "nav-settings" },
   ];
