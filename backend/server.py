@@ -91,6 +91,7 @@ class User(BaseModel):
     role: str = "admin"
     permissions: Dict[str, Any] = Field(default_factory=dict)
     locked: bool = False
+    two_factor_enabled: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserCreate(BaseModel):
@@ -103,15 +104,41 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    totp_token: Optional[str] = None
+    remember_device: bool = False
+    device_token: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
     user: User
+    requires_2fa: bool = False
+    temp_token: Optional[str] = None
+    device_token: Optional[str] = None
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+# 2FA Models
+class TwoFactorSetupResponse(BaseModel):
+    secret: str
+    qr_code: str
+    backup_codes: List[str]
+
+class TwoFactorVerifyRequest(BaseModel):
+    token: str
+
+class TwoFactorEnableRequest(BaseModel):
+    token: str
+    password: str
+
+class TwoFactorDisableRequest(BaseModel):
+    password: str
+    token: str
+
+class BackupCodeVerifyRequest(BaseModel):
+    code: str
 
 # Helper Functions
 def hash_password(password: str) -> str:
