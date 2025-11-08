@@ -610,15 +610,16 @@ class ServerCraftTester:
         """Test 2FA Enable with TOTP verification"""
         print("\n=== Testing 2FA Enable ===")
         
-        if not self.admin_token:
-            self.log_result("2FA Enable", False, "Cannot test - no admin token available")
-            return
-        
         if not hasattr(self, 'totp_secret'):
             self.log_result("2FA Enable", False, "Cannot test - no TOTP secret from setup")
             return
         
-        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        token = self.admin_token or self.get_fresh_admin_token()
+        if not token:
+            self.log_result("2FA Enable", False, "Cannot get admin token")
+            return
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Test with invalid token first
         try:
