@@ -82,8 +82,13 @@ class ServerCraftTester:
             # We'll try with common admin credentials
             test_credentials = [
                 {"email": "admin@servercraft.com", "password": "admin123"},
-                {"email": "admin@example.com", "password": "password123"},
-                {"email": "test@example.com", "password": "password123"}
+                {"email": "admin@servercraft.com", "password": "password123"},
+                {"email": "admin@servercraft.com", "password": "servercraft123"},
+                {"email": "admin@servercraft.com", "password": "admin"},
+                {"email": "test@example.com", "password": "password123"},
+                {"email": "test@example.com", "password": "testpassword123"},
+                {"email": "test@example.com", "password": "test123"},
+                {"email": "admin@example.com", "password": "password123"}
             ]
             
             login_success = False
